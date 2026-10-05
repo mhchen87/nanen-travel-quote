@@ -1,0 +1,322 @@
+{
+  "v": 1,
+  "sample": true,
+  "destination": "日本",
+  "days": 7,
+  "startDate": "2026-10-13",
+  "endDate": "2026-10-19",
+  "dateFormat": "roc",
+  "lifeRegionPct": 200,
+  "plans": [
+    {
+      "name": "方案一",
+      "tagline": "雙實支＋醫療額度高＋不便險",
+      "recommended": true,
+      "life": {
+        "enabled": true,
+        "at1Wan": 500,
+        "oh1Wan": null,
+        "mrWan": null,
+        "oaa": true,
+        "hospitalYuan": null,
+        "outpatientYuan": null,
+        "erYuan": null,
+        "premium": 982
+      },
+      "property": {
+        "label": "新快樂旅綜+ 計畫一 一般500萬",
+        "deathWan": 500,
+        "hospitalWan": 50,
+        "outpatientYuan": 10000,
+        "erYuan": 25000,
+        "accidentMedicalWan": 50,
+        "premium": 1205
+      },
+      "inconvenience": [
+        {
+          "name": "旅程取消",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "旅程更改",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "班機延誤（4小時以上）",
+          "amount": "每4小時6,000元，每次最高12,000元，保期內限2次"
+        },
+        {
+          "name": "行李延誤（6小時以上）",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "行李損失",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "旅行文件損失",
+          "amount": "3,000元/次，保期內限2次"
+        }
+      ],
+      "others": [
+        {
+          "name": "個人責任（自負額2,500元）",
+          "amount": "100萬"
+        },
+        {
+          "name": "緊急救援費用",
+          "amount": "150萬"
+        },
+        {
+          "name": "居家火災臨時住宿",
+          "amount": "2萬"
+        },
+        {
+          "name": "居家竊盜損失",
+          "amount": "2萬"
+        },
+        {
+          "name": "改降非原定機場",
+          "amount": "5,000元/次，保期內限2次"
+        },
+        {
+          "name": "信用卡盜用損失",
+          "amount": "3萬"
+        },
+        {
+          "name": "信用卡購物保障",
+          "amount": "3萬"
+        },
+        {
+          "name": "水陸公共交通工具延誤",
+          "amount": "1,000元，保期內限2次"
+        },
+        {
+          "name": "特定票券取消",
+          "amount": "1,000元，保期內限1次"
+        },
+        {
+          "name": "食品中毒",
+          "amount": "6,000元/次"
+        },
+        {
+          "name": "行動電話被竊",
+          "amount": "1,000元/次，保期內限1次"
+        },
+        {
+          "name": "國際SOS海外緊急救援（贈送）",
+          "amount": "每次事故上限3萬美元"
+        }
+      ]
+    },
+    {
+      "name": "方案二",
+      "tagline": "雙實支保障＋不便險",
+      "recommended": false,
+      "life": {
+        "enabled": true,
+        "at1Wan": 300,
+        "oh1Wan": null,
+        "mrWan": null,
+        "oaa": true,
+        "hospitalYuan": null,
+        "outpatientYuan": null,
+        "erYuan": null,
+        "premium": 708
+      },
+      "property": {
+        "label": "新快樂旅綜+ 計畫一 一般300萬",
+        "deathWan": 300,
+        "hospitalWan": 30,
+        "outpatientYuan": 6000,
+        "erYuan": 15000,
+        "accidentMedicalWan": 30,
+        "premium": 833
+      },
+      "inconvenience": [
+        {
+          "name": "旅程取消",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "旅程更改",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "班機延誤（4小時以上）",
+          "amount": "每4小時5,000元，每次最高10,000元，保期內限2次"
+        },
+        {
+          "name": "行李延誤（6小時以上）",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "行李損失",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "旅行文件損失",
+          "amount": "3,000元/次，保期內限2次"
+        }
+      ],
+      "others": [
+        {
+          "name": "個人責任（自負額2,500元）",
+          "amount": "100萬"
+        },
+        {
+          "name": "緊急救援費用",
+          "amount": "150萬"
+        },
+        {
+          "name": "居家火災臨時住宿",
+          "amount": "2萬"
+        },
+        {
+          "name": "居家竊盜損失",
+          "amount": "2萬"
+        },
+        {
+          "name": "改降非原定機場",
+          "amount": "5,000元/次，保期內限2次"
+        },
+        {
+          "name": "信用卡盜用損失",
+          "amount": "1萬"
+        },
+        {
+          "name": "信用卡購物保障",
+          "amount": "1萬"
+        },
+        {
+          "name": "水陸公共交通工具延誤",
+          "amount": "1,000元，保期內限2次"
+        },
+        {
+          "name": "特定票券取消",
+          "amount": "1,000元，保期內限1次"
+        },
+        {
+          "name": "食品中毒",
+          "amount": "6,000元/次"
+        },
+        {
+          "name": "行動電話被竊",
+          "amount": "1,000元/次，保期內限1次"
+        },
+        {
+          "name": "國際SOS海外緊急救援（贈送）",
+          "amount": "每次事故上限3萬美元"
+        }
+      ]
+    },
+    {
+      "name": "方案三",
+      "tagline": "基本保障＋不便險",
+      "recommended": false,
+      "life": {
+        "enabled": false,
+        "at1Wan": null,
+        "oh1Wan": null,
+        "mrWan": null,
+        "oaa": false,
+        "hospitalYuan": null,
+        "outpatientYuan": null,
+        "erYuan": null,
+        "premium": null
+      },
+      "property": {
+        "label": "新快樂旅綜+ 計畫一 一般300萬",
+        "deathWan": 300,
+        "hospitalWan": 30,
+        "outpatientYuan": 6000,
+        "erYuan": 15000,
+        "accidentMedicalWan": 30,
+        "premium": 833
+      },
+      "inconvenience": [
+        {
+          "name": "旅程取消",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "旅程更改",
+          "amount": "最高6萬（實支實付）"
+        },
+        {
+          "name": "班機延誤（4小時以上）",
+          "amount": "每4小時5,000元，每次最高10,000元，保期內限2次"
+        },
+        {
+          "name": "行李延誤（6小時以上）",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "行李損失",
+          "amount": "6,000元/次，保期內限2次"
+        },
+        {
+          "name": "旅行文件損失",
+          "amount": "3,000元/次，保期內限2次"
+        }
+      ],
+      "others": [
+        {
+          "name": "個人責任（自負額2,500元）",
+          "amount": "100萬"
+        },
+        {
+          "name": "緊急救援費用",
+          "amount": "150萬"
+        },
+        {
+          "name": "居家火災臨時住宿",
+          "amount": "2萬"
+        },
+        {
+          "name": "居家竊盜損失",
+          "amount": "2萬"
+        },
+        {
+          "name": "改降非原定機場",
+          "amount": "5,000元/次，保期內限2次"
+        },
+        {
+          "name": "信用卡盜用損失",
+          "amount": "1萬"
+        },
+        {
+          "name": "信用卡購物保障",
+          "amount": "1萬"
+        },
+        {
+          "name": "水陸公共交通工具延誤",
+          "amount": "1,000元，保期內限2次"
+        },
+        {
+          "name": "特定票券取消",
+          "amount": "1,000元，保期內限1次"
+        },
+        {
+          "name": "食品中毒",
+          "amount": "6,000元/次"
+        },
+        {
+          "name": "行動電話被竊",
+          "amount": "1,000元/次，保期內限1次"
+        },
+        {
+          "name": "國際SOS海外緊急救援（贈送）",
+          "amount": "每次事故上限3萬美元"
+        }
+      ]
+    }
+  ],
+  "agent": {
+    "unit": "南恩通訊處",
+    "name": "陳銘旭",
+    "title": "業務經理",
+    "manager": "林秋慧",
+    "managerTitle": "處經理"
+  }
+}

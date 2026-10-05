@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>旅平險三方案 報價編輯器（內部使用）</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/editor.css">
+</head>
+<body class="editor-body">
+<header class="ed-top">
+  <div class="ed-brand">旅平險三方案 <b>報價編輯器</b><span class="ed-internal">內部使用・請勿傳給客戶</span></div>
+  <div class="ed-actions">
+    <button type="button" class="btn btn-gold" id="btnShare">🔗 產生分享連結</button>
+    <button type="button" class="btn" id="btnDownload">⬇ 下載 JSON</button>
+    <label class="btn" for="fileImport">⬆ 匯入 JSON<input type="file" id="fileImport" accept=".json,application/json" hidden></label>
+    <button type="button" class="btn" id="btnPasteLink">📋 由連結載入</button>
+    <button type="button" class="btn" id="btnSample">載入範例</button>
+    <button type="button" class="btn btn-ghost" id="btnClear">清空金額</button>
+  </div>
+</header>
+
+<section class="ed-share" id="sharePanel" hidden>
+  <div class="share-row">
+    <textarea id="shareUrl" readonly rows="2"></textarea>
+    <div class="share-btns">
+      <button type="button" class="btn btn-gold" id="btnCopy">複製連結</button>
+      <a class="btn" id="btnOpen" target="_blank" rel="noopener">開啟預覽</a>
+    </div>
+  </div>
+  <div class="share-meta" id="shareMeta"></div>
+</section>
+
+<div class="ed-layout">
+  <form class="ed-form" id="form" autocomplete="off" onsubmit="return false">
+    <section class="ed-card">
+      <h2>行程資料 <small>（頁首只顯示：目的地、天數、日期；不顯示年齡）</small></h2>
+      <div class="grid g2">
+        <label>目的地<input type="text" data-k="destination" placeholder="例：日本"></label>
+        <label>天數<input type="number" min="1" data-k="days" inputmode="numeric"><span class="hint" id="daysHint"></span></label>
+        <label>出發日<input type="date" data-k="startDate"></label>
+        <label>回程日<input type="date" data-k="endDate"></label>
+        <label>日期顯示
+          <select data-k="dateFormat"><option value="roc">民國（115/10/13）</option><option value="ad">西元（2026/10/13）</option></select>
+        </label>
+        <label>人壽 OH1 地區限額調整
+          <select data-k="lifeRegionPct"></select>
+          <span class="hint" id="regionHint"></span>
+        </label>
+      </div>
+      <label class="check sample-check"><input type="checkbox" data-k="sample"> 標示為「範例資料」（客戶頁會出現紅色「範例」標記；正式報價請取消勾選）</label>
+    </section>
+
+    <div class="plan-tabs" id="planTabs"></div>
+    <div id="planForms"></div>
+
+    <section class="ed-card">
+      <h2>附註（選填）</h2>
+      <textarea data-k="extraNotesText" rows="3" placeholder="每行一則，會加在頁尾附註"></textarea>
+      <h2 style="margin-top:14px">簽名</h2>
+      <div class="grid g2">
+        <label>通訊處<input type="text" data-k="agent.unit"></label>
+        <label>業務員<input type="text" data-k="agent.name"></label>
+        <label>職稱<input type="text" data-k="agent.title"></label>
+        <label>處經理<input type="text" data-k="agent.manager"></label>
+      </div>
+    </section>
+
+    <section class="ed-card checks" id="checks"></section>
+  </form>
+
+  <aside class="ed-preview">
+    <div class="pv-bar">
+      <span>即時預覽</span>
+      <div class="pv-toggle">
+        <button type="button" class="on" data-w="390">手機 390px</button>
+        <button type="button" data-w="full">桌機</button>
+      </div>
+    </div>
+    <div class="pv-scroll"><div class="pv-frame" id="pvFrame"><div class="app" id="preview"></div></div></div>
+  </aside>
+</div>
+
+<script src="js/vendor/pako.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/sample-data.js"></script>
+<script src="js/presets.js"></script>
+<script src="js/editor.js"></script>
+</body>
+</html>
