@@ -366,6 +366,115 @@
     };
   }
 
+
+  /**
+   * 依目的地字串判斷是否申根行程（子字串比對；含繁中／常見異體／英文／城市／泛稱）。
+   * 成員以歐盟官網為準（2025-01 保加利亞、羅馬尼亞已全面加入；賽普勒斯／愛爾蘭／英國非申根）。
+   * 富邦 DM 另列安道爾／摩納哥／聖馬利諾／教廷等，一併視為申根行程。
+   */
+  function detectSchengen(dest) {
+    var t = String(dest || '').trim();
+    if (!t) return false;
+    var low = t.toLowerCase();
+    // 明確非申根（若整段只有這些、或未同時出現申根關鍵字）— 先蒐集命中
+    var non = [
+      '愛爾蘭', '爱尔兰', 'ireland', 'dublin', '都柏林',
+      '英國', '英国', '英格蘭', '英格兰', '蘇格蘭', '苏格兰', '威爾士', '威爾斯',
+      'uk', 'u.k.', 'united kingdom', 'england', 'scotland', 'wales', 'london', '倫敦', '伦敦',
+      '賽普勒斯', '塞浦路斯', 'cyprus', '尼古西亞', '尼科西亞'
+    ];
+    var sch = [
+      // 泛稱
+      '申根', 'schengen', '歐洲', '欧洲', 'europe', '歐陸', 'eu ',
+      // 國家（繁中＋異體＋英文）
+      '法國', '法国', '法蘭西', 'france',
+      '德國', '德国', 'germany', 'deutschland',
+      '義大利', '意大利', 'italy', 'italia',
+      '西班牙', 'spain', 'espana', 'españa',
+      '葡萄牙', 'portugal',
+      '荷蘭', '荷兰', 'netherlands', 'holland',
+      '比利時', '比利时', 'belgium',
+      '盧森堡', '卢森堡', 'luxembourg',
+      '瑞士', 'switzerland', 'swiss',
+      '奧地利', '奥地利', 'austria',
+      '捷克', 'czech',
+      '匈牙利', 'hungary',
+      '波蘭', '波兰', 'poland',
+      '斯洛伐克', 'slovakia',
+      '斯洛維尼亞', '斯洛文尼亞', 'slovenia',
+      '克羅埃西亞', '克羅地亞', '克罗地亚', 'croatia',
+      '希臘', '希腊', 'greece',
+      '丹麥', '丹麦', 'denmark',
+      '瑞典', 'sweden',
+      '挪威', 'norway',
+      '芬蘭', '芬兰', 'finland',
+      '冰島', '冰岛', 'iceland',
+      '愛沙尼亞', '爱沙尼亚', 'estonia',
+      '拉脫維亞', '拉脱维亚', 'latvia',
+      '立陶宛', 'lithuania',
+      '馬爾他', '马耳他', 'malta',
+      '列支敦斯登', '列支敦士登', 'liechtenstein',
+      '保加利亞', '保加利亚', 'bulgaria',
+      '羅馬尼亞', '罗马尼亚', 'romania',
+      // 微型國家／DM 常列
+      '安道爾', '安道尔', 'andorra',
+      '摩納哥', '摩纳哥', 'monaco',
+      '聖馬利諾', '圣马力诺', 'san marino',
+      '教廷', '梵蒂岡', '梵蒂冈', 'vatican', 'holy see',
+      // 城市／熱門地
+      '巴黎', 'paris',
+      '羅馬', '罗马', 'rome',
+      '米蘭', '米兰', 'milan',
+      '威尼斯', 'venice',
+      '佛羅倫斯', '佛罗伦萨', 'florence', 'firenze',
+      '巴塞隆納', '巴塞罗那', 'barcelona',
+      '馬德里', '马德里', 'madrid',
+      '阿姆斯特丹', 'amsterdam',
+      '布拉格', 'prague',
+      '維也納', '维也纳', 'vienna',
+      '慕尼黑', 'munich', 'münchen',
+      '柏林', 'berlin',
+      '蘇黎世', '苏黎世', 'zurich', 'zürich',
+      '日內瓦', '日内瓦', 'geneva',
+      '布達佩斯', '布达佩斯', 'budapest',
+      '里斯本', 'lisbon',
+      '雅典', 'athens',
+      '斯德哥爾摩', '斯德哥尔摩', 'stockholm',
+      '奧斯陸', '奥斯陆', 'oslo',
+      '赫爾辛基', 'helsinki',
+      '哥本哈根', 'copenhagen',
+      '布魯塞爾', '布鲁塞尔', 'brussels',
+      '法蘭克福', '法兰克福', 'frankfurt',
+      '漢堡', 'hamburg',
+      '科隆', 'cologne', 'köln',
+      '尼斯', 'nice',
+      '里昂', 'lyon',
+      '塞維亞', '塞维利亚', 'seville',
+      '瓦倫西亞', 'valencia',
+      '波爾圖', 'porto',
+      '札格雷布', '萨格勒布', 'zagreb',
+      '盧布爾雅那', 'ljubljana',
+      '塔林', 'tallinn',
+      '里加', 'riga',
+      '維爾紐斯', 'vilnius'
+    ];
+    function hit(list) {
+      for (var i = 0; i < list.length; i++) {
+        var k = list[i];
+        if (!k) continue;
+        if (/[a-z]/i.test(k)) {
+          if (low.indexOf(k.toLowerCase()) >= 0) return true;
+        } else if (t.indexOf(k) >= 0) return true;
+      }
+      return false;
+    }
+    var hasSch = hit(sch);
+    if (!hasSch) return false;
+    // 若同時只有非申根字樣、沒有真正申根國（理論上 hasSch 已排除），仍回 true
+    // 特殊：目的地「僅」為非申根時 hasSch 應為 false；「法國＋英國」→ true
+    return true;
+  }
+
   global.TQ = {
     LIFE_PRODUCT: LIFE_PRODUCT, PROPERTY_PRODUCT: PROPERTY_PRODUCT,
     LIFE_OH1_RATIO: LIFE_OH1_RATIO, PROP_RATIO: PROP_RATIO, REGION_OPTIONS: REGION_OPTIONS,
@@ -374,6 +483,7 @@
     fmtDate: fmtDate, daysInclusive: daysInclusive, parseDateParts: parseDateParts,
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
     findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
+    detectSchengen: detectSchengen,
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
   };
 })(window);

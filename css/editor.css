@@ -173,3 +173,11 @@ input::placeholder { color: #8b97a5; }
 .schengen-toggle .st-desc { font-size: 13px; color: #5d6b7a; margin-top: 2px; line-height: 1.45; }
 .simple-amt { font-size: 18px !important; font-weight: 700; padding: 12px 14px !important; }
 .plan-simple-hint { margin: 0 0 10px; color: #2a6b3f; font-size: 14px; font-weight: 600; }
+
+.schengen-toggle #schengenAutoHint {
+  display: block;
+  margin-top: 6px;
+  color: #0b6e4f;
+  font-weight: 600;
+}
+.schengen-toggle #schengenAutoHint[hidden] { display: none; }

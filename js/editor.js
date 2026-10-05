@@ -14,6 +14,8 @@
   var rebuildingUI = false;
   /** 使用者剛手動改過保費時，略過一次自動覆寫 */
   var skipAutoOnce = { life: {}, prop: {} };
+  /** 使用者手動改過申根勾選；目的地再變時重置，改回依目的地自動 */
+  var schengenManual = false;
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) { return TQ.esc(s); }
@@ -62,6 +64,36 @@
     return q;
   }
 
+
+
+  function setSchengenHint(showAuto) {
+    var el = document.getElementById('schengenAutoHint');
+    if (!el) return;
+    if (showAuto && Q.schengen) {
+      el.hidden = false;
+      el.textContent = '已依目的地自動勾選申根';
+    } else if (!Q.schengen && !schengenManual && Q.destination && !TQ.detectSchengen(Q.destination)) {
+      el.hidden = true;
+      el.textContent = '';
+    } else {
+      el.hidden = true;
+    }
+  }
+  /** 依目的地自動勾／取消申根；手動覆寫期間不改 */
+  function syncSchengenFromDestination() {
+    if (schengenManual) { setSchengenHint(false); return false; }
+    var want = TQ.detectSchengen(Q.destination);
+    var cb = form.querySelector('[data-k="schengen"]');
+    if (want === !!Q.schengen) {
+      setSchengenHint(want);
+      if (cb) cb.checked = !!Q.schengen;
+      return false;
+    }
+    applySchengenMode(want);
+    if (cb) cb.checked = want;
+    setSchengenHint(want);
+    return true; // 呼叫端應 rebuild
+  }
 
   function applySchengenMode(on) {
     Q.schengen = !!on;
@@ -382,7 +414,9 @@
       skipAutoOnce.life = {}; skipAutoOnce.prop = {};
     }
     if (k === 'schengen') {
+      schengenManual = true;
       applySchengenMode(!!v);
+      setSchengenHint(false); // 手動 → 不顯示自動提示
     }
     var mAt = /^plans\.(\d+)\.life\.(at1Wan|oh1Wan|mrWan|oaa|enabled)$/.exec(k);
     if (mAt) delete skipAutoOnce.life[Number(mAt[1])];
@@ -406,11 +440,20 @@
     if (k === 'destination') {
       var g = TQ.guessRegionPct(Q.destination);
       if (g !== Q.lifeRegionPct) { Q.lifeRegionPct = g; form.querySelector('[data-k="lifeRegionPct"]').value = g; }
-      if (window.LIFE_RATES) {
-        var lr = LIFE_RATES.guessLifeRegion(Q.destination);
-        Q.lifeRegion = lr;
-        var sel = form.querySelector('[data-k="lifeRegion"]');
-        if (sel) sel.value = lr;
+      // 目的地變更 → 重新依地名自動申根（取消先前手動覆寫）
+      schengenManual = false;
+      syncSchengenFromDestination();
+      // 人壽地區：若已（自動）申根，applySchengenMode 已設 other；否則依目的地猜
+      if (!Q.schengen) {
+        if (window.LIFE_RATES) {
+          var lr = LIFE_RATES.guessLifeRegion(Q.destination);
+          Q.lifeRegion = lr;
+          var sel = form.querySelector('[data-k="lifeRegion"]');
+          if (sel) sel.value = lr;
+        }
+      } else {
+        var sel2 = form.querySelector('[data-k="lifeRegion"]');
+        if (sel2) sel2.value = Q.lifeRegion;
       }
     }
     if (/\.name$/.test(k) && /^plans\.\d+\.name$/.test(k)) {
@@ -540,7 +583,14 @@
     Q = normalize(clone(q));
     activePlan = 0;
     skipAutoOnce = { life: {}, prop: {} };
+    schengenManual = false;
     Array.prototype.forEach.call(form.querySelectorAll('.ed-card:not(.plan-form)'), function (c) { fillInputs(c); });
+    // 載入時若 JSON 未顯式設 schengen，依目的地補一次；已顯式 true/false 則尊重資料
+    if (q && typeof q.schengen === 'boolean') {
+      setSchengenHint(false);
+    } else {
+      syncSchengenFromDestination();
+    }
     buildPlanUI();
     update();
   }
@@ -549,7 +599,16 @@
   form.addEventListener('input', function (e) {
     // SELECT 改由 change 處理，避免 input+change 雙觸發重建
     if (e.target.tagName === 'SELECT') return;
-    if (e.target.hasAttribute('data-k')) { readInput(e.target); update(); }
+    if (e.target.hasAttribute('data-k')) {
+      readInput(e.target);
+      if (e.target.getAttribute('data-k') === 'destination') {
+        // syncSchengenFromDestination 可能已改模式 → 重建方案表單
+        buildPlanUI();
+        update();
+        return;
+      }
+      update();
+    }
   });
   form.addEventListener('change', function (e) {
     var t = e.target;
