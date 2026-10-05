@@ -75,6 +75,8 @@
           // 離線表無「國外其他」費率 → 清掉自動壽險保費，改手填
           if (p.life._premAuto || true) { p.life.premium = null; p.life._premAuto = false; }
         }
+        // 對齊申根可選保額
+        if ([200, 300, 500, 1000, 1500].indexOf(Number(p.property.deathWan)) < 0) p.property.deathWan = 500;
         p.property._appliedCode = null; // 強制改套 P2
         if (p.property.planCode && /^P1-G/.test(p.property.planCode)) p.property.planCode = '';
       });
@@ -83,6 +85,11 @@
       Q.lifeRegionPct = TQ.guessRegionPct(Q.destination);
       Q.plans.forEach(function (p) {
         if (p.life && p.life.enabled) p.life.oaa = (Q.lifeRegion === 'asia14');
+        // 非申根無 1500 → 對齊最近檔
+        var d = Number(p.property.deathWan);
+        if ([200, 300, 500, 1000].indexOf(d) < 0) {
+          p.property.deathWan = (d >= 750 ? 1000 : (d >= 400 ? 500 : (d >= 250 ? 300 : 200)));
+        }
         p.property._appliedCode = null;
         if (p.property.planCode && /^P2-G/.test(p.property.planCode)) p.property.planCode = '';
       });
@@ -98,7 +105,9 @@
   function applyPropertyCoverage(plan) {
     var preset = TQ.resolvePropertyPreset(plan.property, Q);
     if (!preset) {
-      plan.property._premTip = '尚無對應產險方案（請填保額 200／300／500／1000，或用進階下拉）';
+      plan.property._premTip = Q.schengen
+        ? '尚無對應產險方案（申根請選 200／300／500／1000／1500）'
+        : '尚無對應產險方案（請選 200／300／500／1000，或用進階下拉）';
       plan.property._covAuto = false;
       return false;
     }
@@ -199,10 +208,39 @@
   /* ---------- 方案表單 ---------- */
   function field(label, key, opts) {
     opts = opts || {};
-    return '<label>' + esc(label) + '<input type="' + (opts.type || 'number') + '" data-k="' + key + '"' +
-      (opts.type === 'text' ? '' : ' inputmode="numeric" min="0" step="any"') +
+    var attrs = '';
+    if (opts.type !== 'text') {
+      attrs += ' inputmode="numeric"';
+      attrs += ' min="' + (opts.min != null ? opts.min : 0) + '"';
+      if (opts.max != null) attrs += ' max="' + opts.max + '"';
+      attrs += ' step="' + (opts.step != null ? opts.step : 'any') + '"';
+    }
+    return '<label>' + esc(label) + '<input type="' + (opts.type || 'number') + '" data-k="' + key + '"' + attrs +
       (opts.ph ? ' placeholder="' + esc(opts.ph) + '"' : '') + '>' +
       (opts.hint ? '<span class="hint' + (opts.auto ? ' auto' : '') + '" data-hint="' + key + '">' + esc(opts.hint) + '</span>' : '') + '</label>';
+  }
+  /** DM 固定產險保額（一般 G）；申根＝計畫二另有 1500 */
+  function propertyDeathOptions() {
+    return Q.schengen ? [200, 300, 500, 1000, 1500] : [200, 300, 500, 1000];
+  }
+  function selectField(label, key, options, opts) {
+    opts = opts || {};
+    var h = '<label>' + esc(label) + '<select data-k="' + key + '" data-num="1">';
+    if (opts.blank) h += '<option value="">—</option>';
+    options.forEach(function (o) {
+      var val = (o && typeof o === 'object') ? o.value : o;
+      var lab = (o && typeof o === 'object') ? o.label : (o + ' 萬');
+      h += '<option value="' + esc(String(val)) + '">' + esc(String(lab)) + '</option>';
+    });
+    h += '</select>';
+    if (opts.hint) h += '<span class="hint' + (opts.auto ? ' auto' : '') + '" data-hint="' + key + '">' + esc(opts.hint) + '</span>';
+    h += '</label>';
+    return h;
+  }
+  function at1Options() {
+    var out = [];
+    for (var n = 100; n <= 2000; n += 100) out.push(n);
+    return out;
   }
   function presetOptions(selected) {
     var h = '<option value="">— 選擇方案帶入（新快樂旅綜+ 115.04 DM）—</option>';
@@ -243,10 +281,12 @@
 
     h += '<div class="grid g2">';
     if (hasLife) {
-      h += field('人壽保額 AT1（萬）', b + 'life.at1Wan', { hint: 'OH1／MR 自動＝AT1×10%；保費自動查表', auto: true });
+      h += selectField('人壽保額 AT1（萬）', b + 'life.at1Wan', at1Options(), {
+        hint: '以 100 萬為單位（100～2000）；OH1／MR＝AT1×10%，保費自動查表', auto: true
+      });
     }
-    h += field('產險保額（萬）', b + 'property.deathWan', {
-      hint: Q.schengen ? '對計畫二 P2-G*（200／300／500／1000／1500）' : '對計畫一 P1-G*（200／300／500／1000）',
+    h += selectField('產險保額（萬）', b + 'property.deathWan', propertyDeathOptions(), {
+      hint: Q.schengen ? '計畫二 P2-G*（突發疾病住院 150萬）' : '計畫一 P1-G*',
       auto: true
     });
     h += '</div>';
@@ -318,8 +358,17 @@
     if (k === 'extraNotesText') { Q.extraNotes = el.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); return; }
     var v;
     if (el.type === 'checkbox') v = el.checked;
-    else if (el.type === 'number' || (el.tagName === 'SELECT' && (k === 'lifeRegionPct'))) v = el.value === '' ? null : Number(el.value);
-    else v = el.value;
+    else if (el.type === 'number' || (el.tagName === 'SELECT' && (k === 'lifeRegionPct' || el.getAttribute('data-num') === '1'))) {
+      v = el.value === '' ? null : Number(el.value);
+      if (v !== null && !isFinite(v)) v = null;
+    } else v = el.value;
+    // AT1：對齊 100 萬刻度（100～2000）
+    if (/\.life\.at1Wan$/.test(k) && v != null) {
+      v = Math.round(v / 100) * 100;
+      if (v < 100) v = 100;
+      if (v > 2000) v = 2000;
+      if (el.tagName === 'SELECT' || el.type === 'number') el.value = String(v);
+    }
     setPath(Q, k, v);
 
     // 手動改保費 → 跳過自動覆寫
@@ -341,8 +390,11 @@
     if (mPc) {
       var pi = Number(mPc[1]);
       delete skipAutoOnce.prop[pi];
-      // 保額或方案變了 → 強制重套不便險／保障
-      if (mPc[2] === 'deathWan' || mPc[2] === 'planCode') {
+      // 保額或方案變了 → 強制重套不便險／保障；改保額時清掉舊 planCode 以免蓋回
+      if (mPc[2] === 'deathWan') {
+        Q.plans[pi].property._appliedCode = null;
+        Q.plans[pi].property.planCode = '';
+      } else if (mPc[2] === 'planCode') {
         Q.plans[pi].property._appliedCode = null;
       }
     }
@@ -495,6 +547,8 @@
 
   /* ---------- 事件 ---------- */
   form.addEventListener('input', function (e) {
+    // SELECT 改由 change 處理，避免 input+change 雙觸發重建
+    if (e.target.tagName === 'SELECT') return;
     if (e.target.hasAttribute('data-k')) { readInput(e.target); update(); }
   });
   form.addEventListener('change', function (e) {

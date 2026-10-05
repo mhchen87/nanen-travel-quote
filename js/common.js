@@ -314,18 +314,18 @@
     if (code && (/-R\d/.test(code) || /CHILD/.test(code))) {
       for (var i = 0; i < list.length; i++) if (list[i].code === code) return list[i];
     }
-    // 進階手選且與模式一致的 planCode
+    // 主路徑：保額優先（避免舊 planCode 把使用者剛改的保額蓋回去）
+    var death = num(prop.deathWan);
+    if (death > 0) {
+      var want = (schengen ? 'P2-G' : 'P1-G') + death;
+      for (var j = 0; j < list.length; j++) if (list[j].code === want) return list[j];
+    }
+    // 無有效保額時，才回落既有與模式一致的 planCode
     if (code && !schengen && /^P1-G/.test(code)) {
       for (var a = 0; a < list.length; a++) if (list[a].code === code) return list[a];
     }
     if (code && schengen && /^P2-G/.test(code)) {
       for (var b = 0; b < list.length; b++) if (list[b].code === code) return list[b];
-    }
-    // 主路徑：保額 → 計畫一一般 或 計畫二（申根／醫療加值，突發疾病住院固定 150萬）
-    var death = num(prop.deathWan);
-    if (death > 0) {
-      var want = (schengen ? 'P2-G' : 'P1-G') + death;
-      for (var j = 0; j < list.length; j++) if (list[j].code === want) return list[j];
     }
     return findPropertyPreset(prop);
   }
