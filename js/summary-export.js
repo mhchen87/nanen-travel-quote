@@ -30,10 +30,17 @@
       h += '<div class="sum-death"><div class="lab">意外身故・失能</div><div class="val">' + TQ.esc(TQ.fmtYuan(c.death)) + '</div>';
       h += '<div class="br">' + TQ.esc(on ? ('人壽 ' + TQ.fmtShort(L.at1) + '＋產險 ' + TQ.fmtShort(P.death)) : ('產險 ' + TQ.fmtShort(P.death))) + '</div></div>';
       h += '<ul class="sum-cov">';
-      h += '<li><span>海外突發 住院</span><b>' + TQ.esc(TQ.fmtYuan(c.hospital)) + '</b></li>';
-      h += '<li><span>海外突發 門診</span><b>' + TQ.esc(TQ.fmtYuan(c.outpatient)) + '</b></li>';
-      h += '<li><span>海外突發 急診</span><b>' + TQ.esc(TQ.fmtYuan(c.er)) + '</b></li>';
-      h += '<li><span>意外醫療</span><b>' + TQ.esc(TQ.fmtYuan(c.accidentMedical)) + '</b></li>';
+      function covLi(label, total, br) {
+        return '<li><span>' + TQ.esc(label) + '</span><span class="sum-amtcol"><b>' + TQ.esc(total) + '</b><small class="sum-br">' + TQ.esc(br) + '</small></span></li>';
+      }
+      h += covLi('海外突發 住院', TQ.fmtYuan(c.hospital),
+        on ? ('（人壽 ' + TQ.fmtShort(L.hospital) + '＋產險 ' + TQ.fmtShort(P.hospital) + '）') : ('（產險 ' + TQ.fmtShort(P.hospital) + '）'));
+      h += covLi('海外突發 門診', TQ.fmtYuan(c.outpatient),
+        on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.outpatient) + '＋產險 ' + TQ.fmtShort(P.outpatient) + '）') : ('（產險 ' + TQ.fmtShort(P.outpatient) + '）'));
+      h += covLi('海外突發 急診', TQ.fmtYuan(c.er),
+        on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.er) + '＋產險 ' + TQ.fmtShort(P.er) + '）') : ('（產險 ' + TQ.fmtShort(P.er) + '）'));
+      h += covLi('意外醫療', TQ.fmtYuan(c.accidentMedical),
+        on ? ('（人壽 ' + TQ.fmtShort(L.mr) + '＋產險 ' + TQ.fmtShort(P.accidentMedical) + '）') : ('（產險 ' + TQ.fmtShort(P.accidentMedical) + '）'));
       h += '</ul>';
       // 不便險精簡：前 4 項 + 其餘數
       var items = (plan.inconvenience || []).slice(0, 4);

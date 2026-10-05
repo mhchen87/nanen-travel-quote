@@ -177,8 +177,9 @@
     Q.schengen = !!on;
     if (on) {
       Q.lifeRegion = 'other';
-      // 歐洲 OH1 限額調整多為 200%
-      if (!Q.lifeRegionPct || Number(Q.lifeRegionPct) === 100) Q.lifeRegionPct = 200;
+      // 申根／歐洲：依目的地套 DM 註3（歐洲＝200%；若判不到則預設 200%）
+      Q.lifeRegionPct = TQ.guessRegionPct(Q.destination) || 200;
+      if (Number(Q.lifeRegionPct) === 100) Q.lifeRegionPct = 200;
       Q.plans.forEach(function (p) {
         if (p.life && p.life.enabled) {
           p.life.oaa = false;
@@ -516,11 +517,17 @@
       if (d && d > 0) { Q.days = d; var di = form.querySelector('[data-k="days"]'); if (di) di.value = d; }
     }
     if (k === 'destination') {
-      var g = TQ.guessRegionPct(Q.destination);
-      if (g !== Q.lifeRegionPct) { Q.lifeRegionPct = g; form.querySelector('[data-k="lifeRegionPct"]').value = g; }
       // 目的地變更 → 重新依地名自動申根（取消先前手動覆寫）
       schengenManual = false;
       syncSchengenFromDestination();
+      // 人壽 OH1 地區比例：一律依目的地重判（申根模式若仍 100% 會在 applySchengenMode 抬到 200%）
+      var g = TQ.guessRegionPct(Q.destination);
+      if (Q.schengen && Number(g) === 100) g = 200;
+      if (g !== Q.lifeRegionPct) { Q.lifeRegionPct = g; form.querySelector('[data-k="lifeRegionPct"]').value = g; }
+      else {
+        var lpEl = form.querySelector('[data-k="lifeRegionPct"]');
+        if (lpEl) lpEl.value = Q.lifeRegionPct;
+      }
       // 人壽地區：若已（自動）申根，applySchengenMode 已設 other；否則依目的地猜
       if (!Q.schengen) {
         if (window.LIFE_RATES) {
