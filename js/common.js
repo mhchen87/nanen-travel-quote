@@ -82,23 +82,41 @@
     };
   }
 
-  /* ---------- 日期 ---------- */
+  /* ---------- 日期（只用年月日，避免時區／UTC 字串解析造成少算一天） ---------- */
   var WD = ['日', '一', '二', '三', '四', '五', '六'];
-  function parseDate(s) {
-    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || ''));
+  /** 解析 YYYY-MM-DD → {y,m,d}；不使用 new Date('YYYY-MM-DD')（那會當 UTC 午夜） */
+  function parseDateParts(s) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || '').trim());
     if (!m) return null;
-    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return { y: y, m: mo, d: d };
+  }
+  /** 供顯示用的本地 Date（僅取年月日欄位） */
+  function parseDate(s) {
+    var p = parseDateParts(s);
+    if (!p) return null;
+    return new Date(p.y, p.m - 1, p.d);
   }
   function fmtDate(s, mode) {
-    var d = parseDate(s);
-    if (!d) return s || '';
-    var y = mode === 'ad' ? d.getFullYear() : d.getFullYear() - 1911;
-    return y + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '（' + WD[d.getDay()] + '）';
+    var p = parseDateParts(s);
+    if (!p) return s || '';
+    var dt = new Date(p.y, p.m - 1, p.d);
+    var y = mode === 'ad' ? p.y : p.y - 1911;
+    return y + '/' + p.m + '/' + p.d + '（' + WD[dt.getDay()] + '）';
   }
+  /**
+   * 投保／旅遊天數：算頭算尾（出發日、回程日都算）。
+   * 例：10/13～10/19 = 7；同一天 = 1。
+   * 用 Date.UTC(y,m-1,d) 做日差，不受瀏覽器時區／DST 影響。
+   */
   function daysInclusive(a, b) {
-    var d1 = parseDate(a), d2 = parseDate(b);
-    if (!d1 || !d2) return null;
-    return Math.round((d2 - d1) / 86400000) + 1;
+    var p1 = parseDateParts(a), p2 = parseDateParts(b);
+    if (!p1 || !p2) return null;
+    var t1 = Date.UTC(p1.y, p1.m - 1, p1.d);
+    var t2 = Date.UTC(p2.y, p2.m - 1, p2.d);
+    if (t2 < t1) return null;
+    return Math.floor((t2 - t1) / 86400000) + 1;
   }
 
   /* ---------- 分享連結編解碼（JSON → deflate → base64url，放在 #q=） ---------- */
@@ -337,7 +355,7 @@
     LIFE_OH1_RATIO: LIFE_OH1_RATIO, PROP_RATIO: PROP_RATIO, REGION_OPTIONS: REGION_OPTIONS,
     num: num, isSet: isSet, comma: comma, fmtYuan: fmtYuan, fmtShort: fmtShort,
     guessRegionPct: guessRegionPct, computePlan: computePlan,
-    fmtDate: fmtDate, daysInclusive: daysInclusive,
+    fmtDate: fmtDate, daysInclusive: daysInclusive, parseDateParts: parseDateParts,
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
     findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc

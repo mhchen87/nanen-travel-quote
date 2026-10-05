@@ -313,6 +313,15 @@
   }
 
   function refreshDerived() {
+    // 起迄日 → 天數（算頭算尾）；必須在保費查表前更新
+    var synced = TQ.daysInclusive(Q.startDate, Q.endDate);
+    if (synced && synced > 0 && Number(Q.days) !== synced) {
+      Q.days = synced;
+      var diSync = form.querySelector('[data-k="days"]');
+      if (diSync) diSync.value = synced;
+      skipAutoOnce.life = {};
+      skipAutoOnce.prop = {};
+    }
     var needRebuild = applyAutoPremiums();
     if (needRebuild && !rebuildingUI) {
       // 保障項目列數變了，重建表單一次（_appliedCode 已寫入，不會迴圈）
@@ -361,7 +370,7 @@
     });
     var dh = document.getElementById('daysHint');
     var d = TQ.daysInclusive(Q.startDate, Q.endDate);
-    dh.textContent = d ? ('依日期計算：' + d + ' 天（含出發與回程日）') : '';
+    dh.textContent = d ? ('依日期計算：' + d + ' 天（算頭算尾，出發日與回程日都算）') : '請填出發日與回程日（天數＝算頭算尾）';
     document.getElementById('regionHint').textContent = '依目的地自動判斷，可手動調整（Go安行 DM 註3）';
   }
 
