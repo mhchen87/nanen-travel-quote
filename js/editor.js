@@ -1,4 +1,6 @@
-/* 報價編輯器：填寫 → 即時預覽 → 產生分享連結（資料編碼在網址 # 後）／下載 JSON */
+/* 報價編輯器：填寫 → 即時預覽 → 產生分享連結（資料編碼在網址 # 後）／下載 JSON
+ * 產險保費：新快樂旅綜+ DM（天數 2～10）自動帶入；人壽保費：life-rates.js 精確相符才自動帶入。
+ */
 (function () {
   'use strict';
   var STORE_KEY = 'tq-editor-draft-v1';
@@ -9,6 +11,8 @@
   var planForms = document.getElementById('planForms');
   var activePlan = 0;
   var Q;
+  /** 使用者剛手動改過保費時，略過一次自動覆寫 */
+  var skipAutoOnce = { life: {}, prop: {} };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) { return TQ.esc(s); }
@@ -18,10 +22,11 @@
   }
   function blankPlan(i) {
     var tag = ['雙實支＋醫療額度高＋不便險', '雙實支保障＋不便險', '基本保障＋不便險'][i] || '';
+    var codes = ['P1-G500', 'P1-G300', 'P1-G300'];
     return {
       name: '方案' + '一二三'[i], tagline: tag, recommended: i === 0,
       life: { enabled: i < 2, at1Wan: [500, 300, null][i], oh1Wan: null, mrWan: null, oaa: true, hospitalYuan: null, outpatientYuan: null, erYuan: null, premium: null },
-      property: { label: '', deathWan: [500, 300, 300][i], hospitalWan: null, outpatientYuan: null, erYuan: null, accidentMedicalWan: null, premium: null },
+      property: { planCode: codes[i], label: '', deathWan: [500, 300, 300][i], hospitalWan: null, outpatientYuan: null, erYuan: null, accidentMedicalWan: null, premium: null },
       inconvenience: [], others: []
     };
   }
@@ -30,14 +35,81 @@
     q.v = 1;
     q.plans = q.plans || [];
     for (var i = 0; i < 3; i++) if (!q.plans[i]) q.plans[i] = blankPlan(i);
-    q.plans.forEach(function (p) {
+    q.plans.forEach(function (p, idx) {
       p.life = p.life || {}; p.property = p.property || {};
       p.inconvenience = p.inconvenience || []; p.others = p.others || [];
+      if (!p.property.planCode) {
+        var hit = TQ.findPropertyPreset(p.property);
+        if (hit) p.property.planCode = hit.code;
+        else if (!p.property.planCode) p.property.planCode = ['P1-G500', 'P1-G300', 'P1-G300'][idx];
+      }
     });
     q.agent = q.agent || { unit: '南恩通訊處', name: '陳銘旭', title: '業務經理', manager: '林秋慧', managerTitle: '處經理' };
     if (!q.lifeRegionPct) q.lifeRegionPct = TQ.guessRegionPct(q.destination);
     if (!q.dateFormat) q.dateFormat = 'roc';
+    if (!q.lifeRateType) q.lifeRateType = 'agency';
+    if (!q.ageBand) q.ageBand = '18-65';
+    if (!q.lifeRegion) {
+      q.lifeRegion = (window.LIFE_RATES && LIFE_RATES.guessLifeRegion(q.destination)) || 'asia14';
+    }
     return q;
+  }
+
+  /* ---------- 自動保費 ---------- */
+  function applyAutoPremiums() {
+    var bannerBits = [];
+    Q.plans.forEach(function (p, i) {
+      // 產險
+      if (!skipAutoOnce.prop[i]) {
+        var pr = TQ.lookupPropertyPremium(p.property, Q.days);
+        if (pr.preset && !p.property.planCode) p.property.planCode = pr.preset.code;
+        if (pr.found) {
+          p.property.premium = pr.premium;
+          p.property._premTip = pr.tip;
+          p.property._premAuto = true;
+        } else if (pr.outOfRange) {
+          p.property.premium = null;
+          p.property._premTip = pr.tip;
+          p.property._premAuto = false;
+        } else {
+          p.property._premTip = pr.tip;
+          p.property._premAuto = false;
+        }
+      } else {
+        p.property._premAuto = false;
+        p.property._premTip = '已手動修改產險保費（改天數或重套方案可恢復自動）';
+      }
+
+      // 人壽
+      if (!p.life.enabled) {
+        if (!skipAutoOnce.life[i]) { p.life.premium = 0; p.life._premAuto = true; p.life._premTip = '未含人壽'; }
+      } else if (!skipAutoOnce.life[i] && window.LIFE_RATES) {
+        var lr = LIFE_RATES.lookupLifePremium(Q, p);
+        if (lr.found) {
+          p.life.premium = lr.premium;
+          p.life._premTip = lr.tip;
+          p.life._premAuto = true;
+        } else {
+          // 查無表：不覆寫既有手填；若先前是自動帶入則清空
+          if (p.life._premAuto) p.life.premium = null;
+          p.life._premTip = lr.tip;
+          p.life._premAuto = false;
+        }
+      } else if (!window.LIFE_RATES) {
+        p.life._premTip = '缺少 js/life-rates.js';
+        p.life._premAuto = false;
+      } else {
+        p.life._premAuto = false;
+        p.life._premTip = '已手動修改人壽保費（改天數／AT1／OAA／年齡帶可恢復自動）';
+      }
+
+      bannerBits.push(
+        (p.name || ('方案' + (i + 1))) + '：壽' + (p.life._premAuto ? '自動' : '手填／缺表') +
+        '／產' + (p.property._premAuto ? '自動' : (p.property._premTip && p.property._premTip.indexOf('僅列') >= 0 ? '超出DM' : '手填／未對應'))
+      );
+    });
+    var el = document.getElementById('autoPremiumBanner');
+    if (el) el.textContent = '保費狀態 — ' + bannerBits.join('；');
   }
 
   /* ---------- 路徑存取 ---------- */
@@ -58,9 +130,12 @@
       (opts.ph ? ' placeholder="' + esc(opts.ph) + '"' : '') + '>' +
       (opts.hint ? '<span class="hint' + (opts.auto ? ' auto' : '') + '" data-hint="' + key + '">' + esc(opts.hint) + '</span>' : '') + '</label>';
   }
-  function presetOptions() {
+  function presetOptions(selected) {
     var h = '<option value="">— 選擇方案帶入（新快樂旅綜+ 115.04 DM）—</option>';
-    PRESETS.forEach(function (p) { h += '<option value="' + esc(p.code) + '">' + esc(p.label + '（' + p.ageLabel + '）') + '</option>'; });
+    PRESETS.forEach(function (p) {
+      h += '<option value="' + esc(p.code) + '"' + (selected === p.code ? ' selected' : '') + '>' +
+        esc(p.label + '（' + p.ageLabel + '）') + '</option>';
+    });
     return h;
   }
   function listEditor(i, kind, title) {
@@ -99,19 +174,26 @@
       field('人壽 門診每日（元）', b + 'life.outpatientYuan', { hint: '空白＝自動 OH1×3%×地區%', auto: true }) +
       field('人壽 急診每日（元）', b + 'life.erYuan', { hint: '空白＝自動 OH1×6%×地區%', auto: true }) +
       '</div>';
-    h += '<div class="grid g2" style="margin-top:8px">' + field('人壽保費（元）', b + 'life.premium', { hint: '以 GPTA 系統試算為準' }) + '</div></div>';
+    h += '<div class="grid g2" style="margin-top:8px">' +
+      field('人壽保費（元）', b + 'life.premium', { hint: '精確相符才自動帶入，可手改', auto: true }) +
+      '</div>';
+    h += '<p class="hint" data-life-prem-tip="' + i + '"></p>';
+    h += '</div>';
 
     h += '<div class="sub-box"><b>產險（富邦產險 新快樂旅綜+）</b>';
-    h += '<div class="preset-row" style="margin-top:8px"><label>套用方案預設<select data-preset="' + i + '">' + presetOptions() + '</select></label></div>';
+    h += '<div class="preset-row" style="margin-top:8px"><label>套用方案預設<select data-preset="' + i + '">' +
+      presetOptions(Q.plans[i].property.planCode) + '</select></label></div>';
     h += '<div class="grid g3">' +
+      field('方案代碼', b + 'property.planCode', { type: 'text', ph: '例：P1-G500' }) +
       field('方案名稱（內部參考）', b + 'property.label', { type: 'text' }) +
       field('意外身故失能（萬）', b + 'property.deathWan') +
       field('突發疾病 住院（萬）', b + 'property.hospitalWan') +
       field('突發疾病 門診（元）', b + 'property.outpatientYuan', { hint: '空白＝自動 住院×2%', auto: true }) +
       field('突發疾病 急診（元）', b + 'property.erYuan', { hint: '空白＝自動 住院×5%', auto: true }) +
       field('意外醫療（萬）', b + 'property.accidentMedicalWan') +
-      field('產險保費（元）', b + 'property.premium') +
+      field('產險保費（元）', b + 'property.premium', { hint: 'DM 2～10 天自動帶入，可手改', auto: true }) +
       '</div>';
+    h += '<p class="hint" data-prop-prem-tip="' + i + '"></p>';
     h += listEditor(i, 'inconvenience', '不便險項目');
     h += listEditor(i, 'others', '其他產險保障');
     h += '</div>';
@@ -143,9 +225,25 @@
     if (k === 'extraNotesText') { Q.extraNotes = el.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); return; }
     var v;
     if (el.type === 'checkbox') v = el.checked;
-    else if (el.type === 'number' || el.tagName === 'SELECT' && k === 'lifeRegionPct') v = el.value === '' ? null : Number(el.value);
+    else if (el.type === 'number' || (el.tagName === 'SELECT' && (k === 'lifeRegionPct'))) v = el.value === '' ? null : Number(el.value);
     else v = el.value;
     setPath(Q, k, v);
+
+    // 手動改保費 → 跳過自動覆寫
+    var mLife = /^plans\.(\d+)\.life\.premium$/.exec(k);
+    var mProp = /^plans\.(\d+)\.property\.premium$/.exec(k);
+    if (mLife) { skipAutoOnce.life[Number(mLife[1])] = true; Q.plans[Number(mLife[1])].life._premAuto = false; }
+    if (mProp) { skipAutoOnce.prop[Number(mProp[1])] = true; Q.plans[Number(mProp[1])].property._premAuto = false; }
+
+    // 改關鍵欄位 → 恢復自動
+    if (k === 'days' || k === 'startDate' || k === 'endDate' || k === 'ageBand' || k === 'lifeRegion' || k === 'lifeRateType' || k === 'destination') {
+      skipAutoOnce.life = {}; skipAutoOnce.prop = {};
+    }
+    var mAt = /^plans\.(\d+)\.life\.(at1Wan|oh1Wan|mrWan|oaa|enabled)$/.exec(k);
+    if (mAt) delete skipAutoOnce.life[Number(mAt[1])];
+    var mPc = /^plans\.(\d+)\.property\.(planCode|deathWan|hospitalWan)$/.exec(k);
+    if (mPc) delete skipAutoOnce.prop[Number(mPc[1])];
+
     if (k === 'startDate' || k === 'endDate') {
       var d = TQ.daysInclusive(Q.startDate, Q.endDate);
       if (d && d > 0) { Q.days = d; var di = form.querySelector('[data-k="days"]'); if (di) di.value = d; }
@@ -153,6 +251,12 @@
     if (k === 'destination') {
       var g = TQ.guessRegionPct(Q.destination);
       if (g !== Q.lifeRegionPct) { Q.lifeRegionPct = g; form.querySelector('[data-k="lifeRegionPct"]').value = g; }
+      if (window.LIFE_RATES) {
+        var lr = LIFE_RATES.guessLifeRegion(Q.destination);
+        Q.lifeRegion = lr;
+        var sel = form.querySelector('[data-k="lifeRegion"]');
+        if (sel) sel.value = lr;
+      }
     }
     if (/\.name$/.test(k) && /^plans\.\d+\.name$/.test(k)) {
       var i = Number(k.split('.')[1]);
@@ -161,14 +265,24 @@
   }
 
   function refreshDerived() {
-    // 自動欄位的 placeholder 顯示計算值；小計列
+    applyAutoPremiums();
+    // 把自動結果寫回 input 顯示
     Q.plans.forEach(function (p, i) {
-      var c = TQ.computePlan(p, Q);
       var sec = planForms.querySelector('[data-plan="' + i + '"]');
       if (!sec) return;
-      function ph(key, val, unit) {
+      var lifeInp = sec.querySelector('[data-k="plans.' + i + '.life.premium"]');
+      var propInp = sec.querySelector('[data-k="plans.' + i + '.property.premium"]');
+      if (lifeInp && !skipAutoOnce.life[i]) lifeInp.value = (p.life.premium === null || p.life.premium === undefined) ? '' : p.life.premium;
+      if (propInp && !skipAutoOnce.prop[i]) propInp.value = (p.property.premium === null || p.property.premium === undefined) ? '' : p.property.premium;
+      var lt = sec.querySelector('[data-life-prem-tip="' + i + '"]');
+      var pt = sec.querySelector('[data-prop-prem-tip="' + i + '"]');
+      if (lt) { lt.textContent = p.life._premTip || ''; lt.className = 'hint' + (p.life._premAuto ? ' auto' : ''); }
+      if (pt) { pt.textContent = p.property._premTip || ''; pt.className = 'hint' + (p.property._premAuto ? ' auto' : ''); }
+
+      var c = TQ.computePlan(p, Q);
+      function ph(key, val) {
         var el = sec.querySelector('[data-k="plans.' + i + '.' + key + '"]');
-        if (el) el.placeholder = '自動：' + TQ.comma(val) + (unit || '');
+        if (el) el.placeholder = '自動：' + TQ.comma(val);
       }
       ph('life.oh1Wan', c.life.enabled ? c.life.oh1 / 10000 : TQ.num(p.life.at1Wan) * 0.1);
       ph('life.mrWan', c.life.enabled ? c.life.mr / 10000 : TQ.num(p.life.at1Wan) * 0.1);
@@ -176,13 +290,15 @@
       ph('life.hospitalYuan', oh1 * pct); ph('life.outpatientYuan', oh1 * 0.03 * pct); ph('life.erYuan', oh1 * 0.06 * pct);
       ph('property.outpatientYuan', c.prop.outpatient); ph('property.erYuan', c.prop.er);
       sec.querySelector('.life-box').classList.toggle('off', !p.life.enabled);
+      var lifeBadge = p.life._premAuto ? '🟢自動' : '✏️';
+      var propBadge = p.property._premAuto ? '🟢自動' : '✏️';
       sec.querySelector('[data-sum="' + i + '"]').innerHTML =
         '<span>意外身故失能 <b>' + TQ.fmtYuan(c.death) + '</b></span>' +
         '<span>住院 <b>' + TQ.fmtYuan(c.hospital) + '</b></span>' +
         '<span>門診 <b>' + TQ.fmtYuan(c.outpatient) + '</b></span>' +
         '<span>急診 <b>' + TQ.fmtYuan(c.er) + '</b></span>' +
         '<span>意外醫療 <b>' + TQ.fmtYuan(c.accidentMedical) + '</b></span>' +
-        '<span>保費 <b>壽' + TQ.comma(c.life.premium) + '＋產' + TQ.comma(c.prop.premium) + '＝' + TQ.comma(c.premium) + '元</b></span>';
+        '<span>保費 ' + lifeBadge + '壽<b>' + TQ.comma(c.life.premium) + '</b>＋' + propBadge + '產<b>' + TQ.comma(c.prop.premium) + '</b>＝<b>' + TQ.comma(c.premium) + '</b>元</span>';
     });
     var dh = document.getElementById('daysHint');
     var d = TQ.daysInclusive(Q.startDate, Q.endDate);
@@ -202,32 +318,50 @@
       var n = p.name || '';
       if (p.life && p.life.enabled) {
         if (!TQ.num(p.life.at1Wan)) add('err', n + '：人壽 AT1 未填。');
-        if (!TQ.isSet(p.life.premium)) add('err', n + '：人壽保費未填（請以 GPTA 試算）。');
+        if (!TQ.isSet(p.life.premium)) add('err', n + '：人壽保費未填（' + (p.life._premTip || '請以 GPTA 試算') + '）。');
+        else if (!p.life._premAuto) add('warn', n + '：人壽保費為手填／缺表。');
+        else add('ok', n + '：人壽保費已自動帶入。');
       }
-      if (!TQ.isSet(p.property.premium)) add('err', n + '：產險保費未填。');
+      if (!TQ.isSet(p.property.premium)) add('err', n + '：產險保費未填（' + (p.property._premTip || '') + '）。');
+      else if (!p.property._premAuto) add('warn', n + '：產險保費非 DM 自動（' + (p.property._premTip || '手填') + '）。');
+      else add('ok', n + '：產險保費已自動帶入（DM）。');
       if (!TQ.num(p.property.deathWan)) add('warn', n + '：產險意外身故失能未填。');
       if (!p.inconvenience.length) add('warn', n + '：沒有任何不便險項目。');
       p.inconvenience.concat(p.others).forEach(function (it) {
         if (!it.amount) add('warn', n + '：「' + (it.name || '未命名') + '」保額空白。');
       });
     });
-    if (!out.length) add('ok', '檢查通過，可產生分享連結。');
+    if (!out.some(function (x) { return x.indexOf('class="err"') >= 0; }) && !out.some(function (x) { return x.indexOf('class="warn"') >= 0; })) {
+      /* keep ok lines */
+    }
     document.getElementById('checks').innerHTML = '<h2>送出前檢查</h2><ul>' + out.join('') + '</ul>';
+  }
+
+  function scrubForSave(q) {
+    var c = clone(q);
+    (c.plans || []).forEach(function (p) {
+      if (p.life) { delete p.life._premTip; delete p.life._premAuto; }
+      if (p.property) { delete p.property._premTip; delete p.property._premAuto; }
+    });
+    return c;
   }
 
   var saveTimer;
   function update() {
     refreshDerived();
-    TQ.renderQuote(clone(Q), preview);
+    TQ.renderQuote(scrubForSave(Q), preview);
     checks();
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () { try { localStorage.setItem(STORE_KEY, JSON.stringify(Q)); } catch (e) {} }, 300);
-    document.getElementById('sharePanel').hidden = true; // 內容變更後需重新產生連結
+    saveTimer = setTimeout(function () {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(scrubForSave(Q))); } catch (e) {}
+    }, 300);
+    document.getElementById('sharePanel').hidden = true;
   }
 
   function load(q) {
     Q = normalize(clone(q));
     activePlan = 0;
+    skipAutoOnce = { life: {}, prop: {} };
     Array.prototype.forEach.call(form.querySelectorAll('.ed-card:not(.plan-form)'), function (c) { fillInputs(c); });
     buildPlanUI();
     update();
@@ -244,18 +378,19 @@
       var p = PRESETS.filter(function (x) { return x.code === code; })[0];
       var i = Number(t.getAttribute('data-preset'));
       var plan = Q.plans[i];
+      plan.property.planCode = p.code;
       plan.property.label = p.label;
       plan.property.deathWan = p.deathWan;
       plan.property.hospitalWan = p.hospitalWan;
       plan.property.outpatientYuan = null;
       plan.property.erYuan = null;
       plan.property.accidentMedicalWan = p.accidentMedicalWan;
-      var prem = p.premiumByDays[String(Q.days)];
-      plan.property.premium = prem === undefined ? null : prem;
       plan.inconvenience = clone(p.inconvenience);
       plan.others = clone(p.others);
+      delete skipAutoOnce.prop[i];
       buildPlanUI(); update();
-      toast(prem === undefined ? '已帶入保障；DM 費率表只有 2～10 天，保費請另行試算' : '已帶入 ' + p.label + '，' + Q.days + ' 天保費 ' + TQ.comma(prem) + ' 元');
+      var pr = TQ.lookupPropertyPremium(plan.property, Q.days);
+      toast(pr.found ? ('已帶入 ' + p.label + '，' + Q.days + ' 天保費 ' + TQ.comma(pr.premium) + ' 元') : (pr.tip || '已帶入保障'));
       return;
     }
     if (t.hasAttribute('data-k') && (t.type === 'checkbox' || t.tagName === 'SELECT')) { readInput(t); update(); }
@@ -292,21 +427,20 @@
   });
 
   document.getElementById('btnShare').addEventListener('click', function () {
-    var url = TQ.shareUrl(Q);
+    var clean = scrubForSave(Q);
+    var url = TQ.shareUrl(clean);
     var panel = document.getElementById('sharePanel');
     document.getElementById('shareUrl').value = url;
     document.getElementById('btnOpen').href = url;
     var meta = '連結長度 ' + url.length + ' 字元。';
-    if (/^file:/.test(url)) meta += ' <span class="warn">目前是本機檔案路徑（file://），客戶打不開；請先把網站放到靜態主機（如 GitHub Pages / Netlify），再從該網址開啟編輯器產生連結。</span>';
-    if (url.length > 4500) meta += ' <span class="warn">連結偏長，LINE 單則訊息上限約 5,000 字，建議刪減項目文字或改用 JSON 檔＋?src=。</span>';
+    if (/^file:/.test(url)) meta += ' <span class="warn">目前是本機檔案路徑（file://），客戶打不開；請先把網站放到靜態主機，再從該網址開啟編輯器產生連結。</span>';
+    if (url.length > 4500) meta += ' <span class="warn">連結偏長，LINE 單則訊息上限約 5,000 字。</span>';
     if (Q.sample) meta += ' <span class="warn">此報價仍標示為「範例」。</span>';
     document.getElementById('shareMeta').innerHTML = meta;
     panel.hidden = false;
-    // 驗證：解碼後內容必須一致
     try {
       var back = TQ.decodeHash(url.slice(url.indexOf('#')));
-      var a = clone(Q); delete a._sampleSource;
-      if (JSON.stringify(back) !== JSON.stringify(a)) throw new Error('mismatch');
+      if (JSON.stringify(back) !== JSON.stringify(clean)) throw new Error('mismatch');
     } catch (err) { document.getElementById('shareMeta').innerHTML += ' <span class="warn">連結驗證失敗：' + esc(err.message) + '</span>'; }
   });
   document.getElementById('btnCopy').addEventListener('click', function () {
@@ -317,7 +451,7 @@
       .catch(function () { ta.select(); document.execCommand('copy'); toast('已複製連結'); });
   });
   document.getElementById('btnDownload').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(Q, null, 2)], { type: 'application/json' });
+    var blob = new Blob([JSON.stringify(scrubForSave(Q), null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'quote_' + (Q.destination || '') + (Q.days || '') + '天_' + String(Q.startDate || '').replace(/-/g, '') + (Q.sample ? '_範例' : '') + '.json';

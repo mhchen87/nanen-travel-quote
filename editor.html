@@ -49,7 +49,32 @@
           <select data-k="lifeRegionPct"></select>
           <span class="hint" id="regionHint"></span>
         </label>
+        <label>人壽費率類型
+          <select data-k="lifeRateType">
+            <option value="agency">旅行社／快易保費率</option>
+          </select>
+          <span class="hint">目前離線表僅有此類型</span>
+        </label>
+        <label>人壽旅遊地區（查表用）
+          <select data-k="lifeRegion">
+            <option value="asia14">國外亞洲14國（可附 OAA）</option>
+            <option value="other">國外其他</option>
+          </select>
+          <span class="hint">依目的地自動判斷，可手動改；客戶頁不顯示</span>
+        </label>
+        <label>年齡區間（查表用・客戶頁不顯示）
+          <select data-k="ageBand">
+            <option value="18-65">18足歲～65歲</option>
+            <option value="15-17">15～17歲</option>
+            <option value="66-70">66～70歲</option>
+            <option value="71-75">71～75歲</option>
+            <option value="76-80">76～80歲</option>
+            <option value="under15">未滿15歲</option>
+          </select>
+          <span class="hint">僅供人壽保費查表；報價頁首絕不顯示年齡</span>
+        </label>
       </div>
+      <p class="hint" id="autoPremiumBanner" style="margin:10px 0 0;padding:8px 10px;background:#eef6ff;border-radius:8px;color:#173c66"></p>
       <label class="check sample-check"><input type="checkbox" data-k="sample"> 標示為「範例資料」（客戶頁會出現紅色「範例」標記；正式報價請取消勾選）</label>
     </section>
 
@@ -87,6 +112,7 @@
 <script src="js/common.js"></script>
 <script src="js/sample-data.js"></script>
 <script src="js/presets.js"></script>
+<script src="js/life-rates.js"></script>
 <script src="js/editor.js"></script>
 </body>
 </html>

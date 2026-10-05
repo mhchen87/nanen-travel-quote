@@ -263,6 +263,60 @@
     return (q.sample ? '【範例】' : '') + (q.destination || '') + ' ' + (q.days || '') + '天 旅平險三方案';
   }
 
+
+  /** 產險保費查表：僅 DM 有列的天數（通常 2～10），绝不內插 */
+  function findPropertyPreset(prop) {
+    var list = (global.PROPERTY_PRESETS && global.PROPERTY_PRESETS.plans) || [];
+    if (!prop) return null;
+    if (prop.planCode) {
+      for (var i = 0; i < list.length; i++) if (list[i].code === prop.planCode) return list[i];
+    }
+    // 以身故保額＋住院保額比對（避免誤配租車／計畫二）
+    var death = num(prop.deathWan), hosp = num(prop.hospitalWan), acc = num(prop.accidentMedicalWan);
+    var hits = list.filter(function (x) {
+      return num(x.deathWan) === death
+        && (hosp === 0 || num(x.hospitalWan) === hosp)
+        && (acc === 0 || num(x.accidentMedicalWan) === acc);
+    });
+    if (hits.length === 1) return hits[0];
+    // 僅身故保額唯一時也可（網站三方案：P1-G300 / P1-G500）
+    var byDeath = list.filter(function (x) { return num(x.deathWan) === death && x.code.indexOf('P1-G') === 0; });
+    if (byDeath.length === 1) return byDeath[0];
+    return null;
+  }
+  function lookupPropertyPremium(prop, days) {
+    var d = num(days);
+    var preset = findPropertyPreset(prop);
+    if (!preset) {
+      return { found: false, outOfRange: false, tip: '尚未對應產險方案（請用「套用方案預設」）', preset: null };
+    }
+    var table = preset.premiumByDays || {};
+    var keys = Object.keys(table).map(Number).filter(isFinite).sort(function (a, b) { return a - b; });
+    var minD = keys[0], maxD = keys[keys.length - 1];
+    if (!isFinite(d) || d <= 0) {
+      return { found: false, outOfRange: false, tip: '請先填投保天數', preset: preset };
+    }
+    if (d < minD || d > maxD || table[String(d)] === undefined) {
+      return {
+        found: false,
+        outOfRange: true,
+        tip: '新快樂旅綜+ DM 費率表僅列 ' + minD + '～' + maxD + ' 天，目前 ' + d + ' 天無表列保費，請向產險試算後手填（禁止推估）',
+        preset: preset,
+        dayMin: minD,
+        dayMax: maxD
+      };
+    }
+    var prem = table[String(d)];
+    return {
+      found: true,
+      premium: prem,
+      tip: '自動：' + comma(prem) + ' 元（' + preset.label + '／' + d + '天／DM）',
+      preset: preset,
+      dayMin: minD,
+      dayMax: maxD
+    };
+  }
+
   global.TQ = {
     LIFE_PRODUCT: LIFE_PRODUCT, PROPERTY_PRODUCT: PROPERTY_PRODUCT,
     LIFE_OH1_RATIO: LIFE_OH1_RATIO, PROP_RATIO: PROP_RATIO, REGION_OPTIONS: REGION_OPTIONS,
@@ -270,6 +324,7 @@
     guessRegionPct: guessRegionPct, computePlan: computePlan,
     fmtDate: fmtDate, daysInclusive: daysInclusive,
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
+    findPropertyPreset: findPropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
   };
 })(window);

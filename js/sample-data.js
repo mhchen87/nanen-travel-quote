@@ -7,6 +7,9 @@ window.SAMPLE_QUOTE = {
   "startDate": "2026-10-13",
   "endDate": "2026-10-19",
   "dateFormat": "roc",
+  "lifeRateType": "agency",
+  "lifeRegion": "asia14",
+  "ageBand": "18-65",
   "lifeRegionPct": 200,
   "plans": [
     {
@@ -25,6 +28,7 @@ window.SAMPLE_QUOTE = {
         "premium": 982
       },
       "property": {
+        "planCode": "P1-G500",
         "label": "新快樂旅綜+ 計畫一 一般500萬",
         "deathWan": 500,
         "hospitalWan": 50,
@@ -126,6 +130,7 @@ window.SAMPLE_QUOTE = {
         "premium": 708
       },
       "property": {
+        "planCode": "P1-G300",
         "label": "新快樂旅綜+ 計畫一 一般300萬",
         "deathWan": 300,
         "hospitalWan": 30,
@@ -227,6 +232,7 @@ window.SAMPLE_QUOTE = {
         "premium": null
       },
       "property": {
+        "planCode": "P1-G300",
         "label": "新快樂旅綜+ 計畫一 一般300萬",
         "deathWan": 300,
         "hospitalWan": 30,
