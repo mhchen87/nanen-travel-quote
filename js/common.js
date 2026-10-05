@@ -264,14 +264,13 @@
   }
 
 
-  /** 產險保費查表：僅 DM 有列的天數（通常 2～10），绝不內插 */
+  /** 產險預設方案解析：保額優先對「計畫一・一般」(P1-G*)；進階方案（計畫二／租車／兒童）以 planCode 為準 */
   function findPropertyPreset(prop) {
     var list = (global.PROPERTY_PRESETS && global.PROPERTY_PRESETS.plans) || [];
     if (!prop) return null;
     if (prop.planCode) {
       for (var i = 0; i < list.length; i++) if (list[i].code === prop.planCode) return list[i];
     }
-    // 以身故保額＋住院保額比對（避免誤配租車／計畫二）
     var death = num(prop.deathWan), hosp = num(prop.hospitalWan), acc = num(prop.accidentMedicalWan);
     var hits = list.filter(function (x) {
       return num(x.deathWan) === death
@@ -279,16 +278,32 @@
         && (acc === 0 || num(x.accidentMedicalWan) === acc);
     });
     if (hits.length === 1) return hits[0];
-    // 僅身故保額唯一時也可（網站三方案：P1-G300 / P1-G500）
     var byDeath = list.filter(function (x) { return num(x.deathWan) === death && x.code.indexOf('P1-G') === 0; });
     if (byDeath.length === 1) return byDeath[0];
     return null;
   }
+  function resolvePropertyPreset(prop) {
+    var list = (global.PROPERTY_PRESETS && global.PROPERTY_PRESETS.plans) || [];
+    if (!prop) return null;
+    var code = prop.planCode || '';
+    // 進階：計畫二／租車／兒童 → 尊守 planCode
+    if (code && (/^P2-/.test(code) || /-R\d/.test(code) || /CHILD/.test(code))) {
+      for (var i = 0; i < list.length; i++) if (list[i].code === code) return list[i];
+    }
+    // 一般：只填保額 → 對計畫一一般 P1-G{保額}
+    var death = num(prop.deathWan);
+    if (death > 0) {
+      var want = 'P1-G' + death;
+      for (var j = 0; j < list.length; j++) if (list[j].code === want) return list[j];
+    }
+    return findPropertyPreset(prop);
+  }
+  /** 產險保費查表：僅 DM 有列的天數（通常 2～10），绝不內插；保額／方案變更時一併帶保障項目 */
   function lookupPropertyPremium(prop, days) {
     var d = num(days);
-    var preset = findPropertyPreset(prop);
+    var preset = resolvePropertyPreset(prop);
     if (!preset) {
-      return { found: false, outOfRange: false, tip: '尚未對應產險方案（請用「套用方案預設」）', preset: null };
+      return { found: false, outOfRange: false, tip: '尚無對應產險方案（請填保額 200／300／500／1000，或用進階下拉選計畫二／租車）', preset: null };
     }
     var table = preset.premiumByDays || {};
     var keys = Object.keys(table).map(Number).filter(isFinite).sort(function (a, b) { return a - b; });
@@ -324,7 +339,7 @@
     guessRegionPct: guessRegionPct, computePlan: computePlan,
     fmtDate: fmtDate, daysInclusive: daysInclusive,
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
-    findPropertyPreset: findPropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
+    findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
   };
 })(window);

@@ -11,6 +11,7 @@
   var planForms = document.getElementById('planForms');
   var activePlan = 0;
   var Q;
+  var rebuildingUI = false;
   /** 使用者剛手動改過保費時，略過一次自動覆寫 */
   var skipAutoOnce = { life: {}, prop: {} };
 
@@ -55,21 +56,55 @@
     return q;
   }
 
-  /* ---------- 自動保費 ---------- */
+  /* ---------- 產險整包自動帶入（保額／天數）＋人壽保費查表 ---------- */
+  /** 依保額（或進階 planCode）套用不便險／其他保障／住院醫療等；回傳是否異動項目（需重建表單） */
+  function applyPropertyCoverage(plan) {
+    var preset = TQ.resolvePropertyPreset(plan.property);
+    if (!preset) {
+      plan.property._premTip = '尚無對應產險方案（請填保額 200／300／500／1000，或用進階下拉）';
+      plan.property._covAuto = false;
+      return false;
+    }
+    var changed = plan.property._appliedCode !== preset.code
+      || !plan.inconvenience || !plan.inconvenience.length
+      || !plan.others || !plan.others.length;
+    plan.property.planCode = preset.code;
+    plan.property.label = preset.label;
+    plan.property.deathWan = preset.deathWan;
+    plan.property.hospitalWan = preset.hospitalWan;
+    plan.property.accidentMedicalWan = preset.accidentMedicalWan;
+    // 門診／急診留給自動比例（null＝住院×2%／5%）
+    if (!TQ.isSet(plan.property.outpatientYuan) || changed) plan.property.outpatientYuan = null;
+    if (!TQ.isSet(plan.property.erYuan) || changed) plan.property.erYuan = null;
+    if (changed) {
+      plan.inconvenience = clone(preset.inconvenience);
+      plan.others = clone(preset.others);
+      plan.property._appliedCode = preset.code;
+      plan.property._covAuto = true;
+    }
+    return changed;
+  }
+
   function applyAutoPremiums() {
     var bannerBits = [];
+    var needRebuild = false;
     Q.plans.forEach(function (p, i) {
-      // 產險
+      // 產險：先依保額套保障項目
+      if (applyPropertyCoverage(p)) needRebuild = true;
+
       if (!skipAutoOnce.prop[i]) {
         var pr = TQ.lookupPropertyPremium(p.property, Q.days);
-        if (pr.preset && !p.property.planCode) p.property.planCode = pr.preset.code;
+        if (pr.preset) {
+          p.property.planCode = pr.preset.code;
+          if (!p.property._appliedCode) p.property._appliedCode = pr.preset.code;
+        }
         if (pr.found) {
           p.property.premium = pr.premium;
-          p.property._premTip = pr.tip;
+          p.property._premTip = pr.tip + (p.property._covAuto ? '；不便險／其他保障已自動帶入' : '');
           p.property._premAuto = true;
         } else if (pr.outOfRange) {
           p.property.premium = null;
-          p.property._premTip = pr.tip;
+          p.property._premTip = pr.tip + '（保障項目仍已依保額自動帶入）';
           p.property._premAuto = false;
         } else {
           p.property._premTip = pr.tip;
@@ -77,7 +112,7 @@
         }
       } else {
         p.property._premAuto = false;
-        p.property._premTip = '已手動修改產險保費（改天數或重套方案可恢復自動）';
+        p.property._premTip = '已手動修改產險保費（改天數或保額可恢復自動）';
       }
 
       // 人壽
@@ -90,7 +125,6 @@
           p.life._premTip = lr.tip;
           p.life._premAuto = true;
         } else {
-          // 查無表：不覆寫既有手填；若先前是自動帶入則清空
           if (p.life._premAuto) p.life.premium = null;
           p.life._premTip = lr.tip;
           p.life._premAuto = false;
@@ -109,7 +143,8 @@
       );
     });
     var el = document.getElementById('autoPremiumBanner');
-    if (el) el.textContent = '保費狀態 — ' + bannerBits.join('；');
+    if (el) el.textContent = '保費狀態 — ' + bannerBits.join('；') + '｜產險：改保額或天數即自動帶不便險／保障／保費';
+    return needRebuild;
   }
 
   /* ---------- 路徑存取 ---------- */
@@ -181,19 +216,23 @@
     h += '</div>';
 
     h += '<div class="sub-box"><b>產險（富邦產險 新快樂旅綜+）</b>';
-    h += '<div class="preset-row" style="margin-top:8px"><label>套用方案預設<select data-preset="' + i + '">' +
+    h += '<p class="hint auto" style="margin:6px 0 8px">只需填「產險保額」；不便險、其他保障、住院／意外醫療額度與保費會依保額＋天數自動帶入（DM 2～10 天有保費）。</p>';
+    h += '<div class="grid g2">' +
+      field('產險保額（萬）＝意外身故失能', b + 'property.deathWan', { hint: '常用 300／500；對應計畫一一般', auto: true }) +
+      field('產險保費（元）', b + 'property.premium', { hint: 'DM 2～10 天自動，可手改', auto: true }) +
+      '</div>';
+    h += '<p class="hint" data-prop-prem-tip="' + i + '"></p>';
+    h += '<details class="prop-advanced" style="margin-top:8px"><summary>進階（計畫二／租車／細項）</summary>';
+    h += '<div class="preset-row" style="margin-top:8px"><label>改選完整方案<select data-preset="' + i + '">' +
       presetOptions(Q.plans[i].property.planCode) + '</select></label></div>';
     h += '<div class="grid g3">' +
       field('方案代碼', b + 'property.planCode', { type: 'text', ph: '例：P1-G500' }) +
       field('方案名稱（內部參考）', b + 'property.label', { type: 'text' }) +
-      field('意外身故失能（萬）', b + 'property.deathWan') +
       field('突發疾病 住院（萬）', b + 'property.hospitalWan') +
       field('突發疾病 門診（元）', b + 'property.outpatientYuan', { hint: '空白＝自動 住院×2%', auto: true }) +
       field('突發疾病 急診（元）', b + 'property.erYuan', { hint: '空白＝自動 住院×5%', auto: true }) +
       field('意外醫療（萬）', b + 'property.accidentMedicalWan') +
-      field('產險保費（元）', b + 'property.premium', { hint: 'DM 2～10 天自動帶入，可手改', auto: true }) +
-      '</div>';
-    h += '<p class="hint" data-prop-prem-tip="' + i + '"></p>';
+      '</div></details>';
     h += listEditor(i, 'inconvenience', '不便險項目');
     h += listEditor(i, 'others', '其他產險保障');
     h += '</div>';
@@ -202,11 +241,13 @@
     return h;
   }
   function buildPlanUI() {
+    rebuildingUI = true;
     planTabs.innerHTML = Q.plans.map(function (p, i) {
       return '<button type="button" data-tab="' + i + '"' + (i === activePlan ? ' class="on"' : '') + '>' + esc(p.name || ('方案' + (i + 1))) + '</button>';
     }).join('');
     planForms.innerHTML = Q.plans.map(function (_, i) { return planForm(i); }).join('');
     fillInputs(planForms);
+    rebuildingUI = false;
     refreshDerived();
   }
 
@@ -242,7 +283,14 @@
     var mAt = /^plans\.(\d+)\.life\.(at1Wan|oh1Wan|mrWan|oaa|enabled)$/.exec(k);
     if (mAt) delete skipAutoOnce.life[Number(mAt[1])];
     var mPc = /^plans\.(\d+)\.property\.(planCode|deathWan|hospitalWan)$/.exec(k);
-    if (mPc) delete skipAutoOnce.prop[Number(mPc[1])];
+    if (mPc) {
+      var pi = Number(mPc[1]);
+      delete skipAutoOnce.prop[pi];
+      // 保額或方案變了 → 強制重套不便險／保障
+      if (mPc[2] === 'deathWan' || mPc[2] === 'planCode') {
+        Q.plans[pi].property._appliedCode = null;
+      }
+    }
 
     if (k === 'startDate' || k === 'endDate') {
       var d = TQ.daysInclusive(Q.startDate, Q.endDate);
@@ -265,7 +313,12 @@
   }
 
   function refreshDerived() {
-    applyAutoPremiums();
+    var needRebuild = applyAutoPremiums();
+    if (needRebuild && !rebuildingUI) {
+      // 保障項目列數變了，重建表單一次（_appliedCode 已寫入，不會迴圈）
+      buildPlanUI();
+      return;
+    }
     // 把自動結果寫回 input 顯示
     Q.plans.forEach(function (p, i) {
       var sec = planForms.querySelector('[data-plan="' + i + '"]');
@@ -274,6 +327,12 @@
       var propInp = sec.querySelector('[data-k="plans.' + i + '.property.premium"]');
       if (lifeInp && !skipAutoOnce.life[i]) lifeInp.value = (p.life.premium === null || p.life.premium === undefined) ? '' : p.life.premium;
       if (propInp && !skipAutoOnce.prop[i]) propInp.value = (p.property.premium === null || p.property.premium === undefined) ? '' : p.property.premium;
+      ['deathWan', 'planCode', 'label', 'hospitalWan', 'accidentMedicalWan'].forEach(function (fk) {
+        var el = sec.querySelector('[data-k="plans.' + i + '.property.' + fk + '"]');
+        if (el && p.property[fk] !== null && p.property[fk] !== undefined) el.value = p.property[fk];
+      });
+      var sel = sec.querySelector('[data-preset="' + i + '"]');
+      if (sel && p.property.planCode) sel.value = p.property.planCode;
       var lt = sec.querySelector('[data-life-prem-tip="' + i + '"]');
       var pt = sec.querySelector('[data-prop-prem-tip="' + i + '"]');
       if (lt) { lt.textContent = p.life._premTip || ''; lt.className = 'hint' + (p.life._premAuto ? ' auto' : ''); }
@@ -341,7 +400,10 @@
     var c = clone(q);
     (c.plans || []).forEach(function (p) {
       if (p.life) { delete p.life._premTip; delete p.life._premAuto; }
-      if (p.property) { delete p.property._premTip; delete p.property._premAuto; }
+      if (p.property) {
+        delete p.property._premTip; delete p.property._premAuto;
+        delete p.property._covAuto; delete p.property._appliedCode;
+      }
     });
     return c;
   }
@@ -387,6 +449,8 @@
       plan.property.accidentMedicalWan = p.accidentMedicalWan;
       plan.inconvenience = clone(p.inconvenience);
       plan.others = clone(p.others);
+      plan.property._appliedCode = p.code;
+      plan.property._covAuto = true;
       delete skipAutoOnce.prop[i];
       buildPlanUI(); update();
       var pr = TQ.lookupPropertyPremium(plan.property, Q.days);
@@ -423,6 +487,20 @@
     b.addEventListener('click', function () {
       document.querySelectorAll('.pv-toggle button').forEach(function (x) { x.classList.toggle('on', x === b); });
       document.getElementById('pvFrame').classList.toggle('full', b.getAttribute('data-w') === 'full');
+    });
+  });
+
+
+  document.getElementById('btnSummaryPng').addEventListener('click', function () {
+    var btn = document.getElementById('btnSummaryPng');
+    btn.disabled = true; btn.textContent = '產生中…';
+    var clean = scrubForSave(Q);
+    TQ_SUMMARY.downloadSummaryPng(clean).then(function (name) {
+      toast('已下載 ' + name);
+    }).catch(function (err) {
+      alert('產生總表圖失敗：' + (err && err.message ? err.message : err));
+    }).finally(function () {
+      btn.disabled = false; btn.textContent = '🖼 下載三方案總表圖';
     });
   });
 

@@ -89,3 +89,77 @@ input::placeholder { color: #8b97a5; }
 .pv-frame .sample-banner, .pv-frame .plan-nav { position: static; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 100; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .pv-frame.full .plans { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; }
+
+/* 產險進階摺疊 */
+.prop-advanced { border: 1px dashed #c9d3df; border-radius: 10px; padding: 8px 10px; background: #fafbfd; }
+.prop-advanced summary { cursor: pointer; font-weight: 700; color: var(--navy); font-size: 14px; }
+
+/* 三方案總表匯出（離屏渲染） */
+#summaryExportHost {
+  position: fixed; left: -10000px; top: 0; width: 780px; pointer-events: none; z-index: -1;
+}
+.sum-root {
+  width: 780px; background: #f4f6f9; font-family: "Noto Sans TC", "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+  color: #1d2733; box-sizing: border-box;
+}
+.sum-sample {
+  background: repeating-linear-gradient(45deg, #b3261e, #b3261e 10px, #c4362d 10px, #c4362d 20px);
+  color: #fff; text-align: center; font-weight: 800; padding: 8px; font-size: 14px; letter-spacing: .06em;
+}
+.sum-hero {
+  background: radial-gradient(120% 140% at 100% 0%, #173c66 0%, #0f2a4a 60%);
+  color: #fff; padding: 22px 24px 18px; position: relative;
+}
+.sum-hero::after {
+  content: ""; position: absolute; left: 24px; right: 24px; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, #c9a45c, #e6cf9a, transparent);
+}
+.sum-kicker { color: #e6cf9a; font-size: 13px; letter-spacing: .2em; font-weight: 700; }
+.sum-title { font-size: 34px; font-weight: 800; margin: 4px 0; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.sum-title .days { color: #e6cf9a; }
+.sum-title .days small { font-size: 18px; }
+.sum-dates { font-size: 16px; color: #dbe4ef; }
+.sum-plans { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 14px 14px 8px; }
+.sum-card {
+  background: #fff; border-radius: 14px; border: 1px solid #e3e8ef; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: 0 4px 14px rgba(15,42,74,.08);
+}
+.sum-card.reco { border: 2px solid #c9a45c; }
+.sum-card-h {
+  background: #0f2a4a; color: #fff; padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+}
+.sum-name { font-size: 18px; font-weight: 800; }
+.sum-badge { background: #c9a45c; color: #0f2a4a; font-size: 12px; font-weight: 800; padding: 1px 8px; border-radius: 999px; }
+.sum-tag { padding: 6px 12px 0; color: #7a5a1c; font-weight: 700; font-size: 13px; }
+.sum-death {
+  margin: 8px 10px; padding: 8px; text-align: center; background: #fbf5e8; border: 1px solid #efe0bd; border-radius: 10px;
+}
+.sum-death .lab { font-size: 12px; color: #7a5a1c; font-weight: 700; letter-spacing: .06em; }
+.sum-death .val { font-size: 26px; font-weight: 800; color: #0f2a4a; line-height: 1.2; }
+.sum-death .br { font-size: 12px; color: #5d6b7a; }
+.sum-cov, .sum-items { list-style: none; margin: 0; padding: 4px 12px 8px; }
+.sum-cov li, .sum-items li {
+  display: flex; justify-content: space-between; gap: 6px; padding: 4px 0;
+  border-bottom: 1px solid #f0f2f6; font-size: 12.5px;
+}
+.sum-cov li b { color: #0f2a4a; font-size: 14px; }
+.sum-items li span:last-child { color: #0f2a4a; font-weight: 700; text-align: right; max-width: 58%; }
+.sum-items li.more { color: #5d6b7a; font-style: italic; border: 0; justify-content: center; }
+.sum-sec {
+  margin: 2px 12px 0; font-size: 12px; font-weight: 800; color: #0f2a4a; letter-spacing: .08em;
+  display: flex; align-items: center; gap: 6px;
+}
+.sum-sec::before { content: ""; width: 3px; height: 12px; background: #c9a45c; border-radius: 2px; }
+.sum-prem {
+  margin-top: auto; padding: 10px 12px; background: linear-gradient(180deg, #fffaf0, #fbf5e8);
+  border-top: 2px solid #c9a45c; text-align: center; font-size: 13px; color: #1d2733;
+}
+.sum-prem b { font-size: 22px; color: #b3261e; }
+.sum-foot {
+  margin: 8px 14px 16px; padding: 14px; border-radius: 14px; text-align: center;
+  background: #0f2a4a; color: #fff; border-top: 3px solid #c9a45c;
+}
+.sum-foot .u { color: #e6cf9a; font-size: 13px; letter-spacing: .12em; font-weight: 600; }
+.sum-foot .p { margin-top: 4px; font-size: 16px; }
+.sum-foot .p b { font-size: 18px; letter-spacing: .06em; }
+.sum-foot .note { margin-top: 6px; font-size: 11px; color: #9ab; }

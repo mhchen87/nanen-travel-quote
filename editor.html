@@ -14,6 +14,7 @@
   <div class="ed-brand">旅平險三方案 <b>報價編輯器</b><span class="ed-internal">內部使用・請勿傳給客戶</span></div>
   <div class="ed-actions">
     <button type="button" class="btn btn-gold" id="btnShare">🔗 產生分享連結</button>
+    <button type="button" class="btn btn-gold" id="btnSummaryPng">🖼 下載三方案總表圖</button>
     <button type="button" class="btn" id="btnDownload">⬇ 下載 JSON</button>
     <label class="btn" for="fileImport">⬆ 匯入 JSON<input type="file" id="fileImport" accept=".json,application/json" hidden></label>
     <button type="button" class="btn" id="btnPasteLink">📋 由連結載入</button>
@@ -109,10 +110,12 @@
 </div>
 
 <script src="js/vendor/pako.min.js"></script>
+<script src="js/vendor/html2canvas.min.js"></script>
 <script src="js/common.js"></script>
 <script src="js/sample-data.js"></script>
 <script src="js/presets.js"></script>
 <script src="js/life-rates.js"></script>
+<script src="js/summary-export.js"></script>
 <script src="js/editor.js"></script>
 </body>
 </html>
