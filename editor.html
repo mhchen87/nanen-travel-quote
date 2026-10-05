@@ -39,42 +39,52 @@
     <section class="ed-card">
       <h2>行程資料 <small>（頁首只顯示：目的地、天數、日期；不顯示年齡）</small></h2>
       <div class="grid g2">
-        <label>目的地<input type="text" data-k="destination" placeholder="例：日本"></label>
+        <label>目的地<input type="text" data-k="destination" placeholder="例：日本／法國（申根）"></label>
         <label>天數<input type="number" min="1" data-k="days" inputmode="numeric"><span class="hint" id="daysHint"></span></label>
         <label>出發日<input type="date" data-k="startDate"></label>
         <label>回程日<input type="date" data-k="endDate"></label>
         <label>日期顯示
           <select data-k="dateFormat"><option value="roc">民國（115/10/13）</option><option value="ad">西元（2026/10/13）</option></select>
         </label>
-        <label>人壽 OH1 地區限額調整
-          <select data-k="lifeRegionPct"></select>
-          <span class="hint" id="regionHint"></span>
-        </label>
-        <label>人壽費率類型
-          <select data-k="lifeRateType">
-            <option value="agency">旅行社／快易保費率</option>
-          </select>
-          <span class="hint">目前離線表僅有此類型</span>
-        </label>
-        <label>人壽旅遊地區（查表用）
-          <select data-k="lifeRegion">
-            <option value="asia14">國外亞洲14國（可附 OAA）</option>
-            <option value="other">國外其他</option>
-          </select>
-          <span class="hint">依目的地自動判斷，可手動改；客戶頁不顯示</span>
-        </label>
-        <label>年齡區間（查表用・客戶頁不顯示）
-          <select data-k="ageBand">
-            <option value="18-65">18足歲～65歲</option>
-            <option value="15-17">15～17歲</option>
-            <option value="66-70">66～70歲</option>
-            <option value="71-75">71～75歲</option>
-            <option value="76-80">76～80歲</option>
-            <option value="under15">未滿15歲</option>
-          </select>
-          <span class="hint">僅供人壽保費查表；報價頁首絕不顯示年齡</span>
-        </label>
       </div>
+      <details class="prop-advanced" style="margin-top:10px">
+        <summary>行程進階（OH1 地區%、年齡帶、人壽查表地區）</summary>
+        <div class="grid g2" style="margin-top:8px">
+          <label>人壽 OH1 地區限額調整
+            <select data-k="lifeRegionPct"></select>
+            <span class="hint" id="regionHint"></span>
+          </label>
+          <label>人壽費率類型
+            <select data-k="lifeRateType">
+              <option value="agency">旅行社／快易保費率</option>
+            </select>
+          </label>
+          <label>人壽旅遊地區（查表用）
+            <select data-k="lifeRegion">
+              <option value="asia14">國外亞洲14國（可附 OAA）</option>
+              <option value="other">國外其他</option>
+            </select>
+            <span class="hint">申根勾選時會自動改為「國外其他」</span>
+          </label>
+          <label>年齡區間（查表用・客戶頁不顯示）
+            <select data-k="ageBand">
+              <option value="18-65">18足歲～65歲</option>
+              <option value="15-17">15～17歲</option>
+              <option value="66-70">66～70歲</option>
+              <option value="71-75">71～75歲</option>
+              <option value="76-80">76～80歲</option>
+              <option value="under15">未滿15歲</option>
+            </select>
+          </label>
+        </div>
+      </details>
+      <label class="schengen-toggle">
+        <input type="checkbox" data-k="schengen">
+        <span>
+          <span class="st-title">🇪🇺 申根行程（產險改用計畫二）</span>
+          <span class="st-desc">勾選後產險自動改為「新快樂旅綜+ 計畫二（醫療加值／申根適用）」：海外突發疾病住院固定 <b>150萬</b>，保額仍依下方各方案「產險保額」。人壽視為國外其他（無 OAA），離線表無費率，需 GPTA 手填。</span>
+        </span>
+      </label>
       <p class="hint" id="autoPremiumBanner" style="margin:10px 0 0;padding:8px 10px;background:#eef6ff;border-radius:8px;color:#173c66"></p>
       <label class="check sample-check"><input type="checkbox" data-k="sample"> 標示為「範例資料」（客戶頁會出現紅色「範例」標記；正式報價請取消勾選）</label>
     </section>

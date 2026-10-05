@@ -225,7 +225,11 @@
   function renderNotes(quote) {
     var notes = [];
     var anyLife = (quote.plans || []).some(function (p) { return p.life && p.life.enabled; });
-    notes.push('人壽＝' + LIFE_PRODUCT + '；產險＝' + PROPERTY_PRODUCT + '。');
+    notes.push('人壽＝' + LIFE_PRODUCT + '；產險＝' + PROPERTY_PRODUCT +
+      (quote.schengen ? '【計畫二・醫療加值／申根適用，海外突發疾病住院 150萬】' : '【計畫一・國外旅遊適用】') + '。');
+    if (quote.schengen) {
+      notes.push('申根行程：產險已套用計畫二；請隨身攜帶申根地區醫療旅遊保險英文投保憑證。人壽為國外其他地區（OAA 不適用），保費請以 GPTA 試算為準。');
+    }
     if (anyLife) {
       var pct = num(quote.lifeRegionPct || 100);
       notes.push('人壽海外突發疾病（OH1）與意外醫療（MR）各為 AT1 保額之 10%' +
@@ -242,7 +246,8 @@
     var mode = quote.dateFormat === 'ad' ? 'ad' : 'roc';
     var dates = '';
     if (quote.startDate || quote.endDate) dates = fmtDate(quote.startDate, mode) + ' ～ ' + fmtDate(quote.endDate, mode);
-    return '<div class="hero-kicker">旅平險 三方案報價</div>' +
+    var kicker = '旅平險 三方案報價' + (quote.schengen ? '　<span class="hero-schengen">申根／計畫二</span>' : '');
+    return '<div class="hero-kicker">' + kicker + '</div>' +
       '<h1 class="hero-title"><span class="dest">' + esc(quote.destination || '—') + '</span><span class="days">' +
       esc(quote.days || '—') + '<small> 天</small></span></h1>' +
       (dates ? '<div class="hero-dates">' + esc(dates) + '</div>' : '');
@@ -300,28 +305,39 @@
     if (byDeath.length === 1) return byDeath[0];
     return null;
   }
-  function resolvePropertyPreset(prop) {
+  function resolvePropertyPreset(prop, quote) {
     var list = (global.PROPERTY_PRESETS && global.PROPERTY_PRESETS.plans) || [];
     if (!prop) return null;
+    var schengen = !!(quote && quote.schengen);
     var code = prop.planCode || '';
-    // 進階：計畫二／租車／兒童 → 尊守 planCode
-    if (code && (/^P2-/.test(code) || /-R\d/.test(code) || /CHILD/.test(code))) {
+    // 進階手選租車／兒童 → 尊守 planCode（申根模式下仍可用）
+    if (code && (/-R\d/.test(code) || /CHILD/.test(code))) {
       for (var i = 0; i < list.length; i++) if (list[i].code === code) return list[i];
     }
-    // 一般：只填保額 → 對計畫一一般 P1-G{保額}
+    // 進階手選且與模式一致的 planCode
+    if (code && !schengen && /^P1-G/.test(code)) {
+      for (var a = 0; a < list.length; a++) if (list[a].code === code) return list[a];
+    }
+    if (code && schengen && /^P2-G/.test(code)) {
+      for (var b = 0; b < list.length; b++) if (list[b].code === code) return list[b];
+    }
+    // 主路徑：保額 → 計畫一一般 或 計畫二（申根／醫療加值，突發疾病住院固定 150萬）
     var death = num(prop.deathWan);
     if (death > 0) {
-      var want = 'P1-G' + death;
+      var want = (schengen ? 'P2-G' : 'P1-G') + death;
       for (var j = 0; j < list.length; j++) if (list[j].code === want) return list[j];
     }
     return findPropertyPreset(prop);
   }
   /** 產險保費查表：僅 DM 有列的天數（通常 2～10），绝不內插；保額／方案變更時一併帶保障項目 */
-  function lookupPropertyPremium(prop, days) {
+  function lookupPropertyPremium(prop, days, quote) {
     var d = num(days);
-    var preset = resolvePropertyPreset(prop);
+    var preset = resolvePropertyPreset(prop, quote);
     if (!preset) {
-      return { found: false, outOfRange: false, tip: '尚無對應產險方案（請填保額 200／300／500／1000，或用進階下拉選計畫二／租車）', preset: null };
+      var sch = quote && quote.schengen;
+      return { found: false, outOfRange: false, tip: sch
+        ? '申根／計畫二尚無此產險保額（DM 有 200／300／500／1000／1500 萬，突發疾病住院皆 150萬）'
+        : '尚無對應產險方案（請填保額 200／300／500／1000，或勾選申根／用進階下拉）', preset: null };
     }
     var table = preset.premiumByDays || {};
     var keys = Object.keys(table).map(Number).filter(isFinite).sort(function (a, b) { return a - b; });

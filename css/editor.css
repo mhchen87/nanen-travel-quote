@@ -163,3 +163,13 @@ input::placeholder { color: #8b97a5; }
 .sum-foot .p { margin-top: 4px; font-size: 16px; }
 .sum-foot .p b { font-size: 18px; letter-spacing: .06em; }
 .sum-foot .note { margin-top: 6px; font-size: 11px; color: #9ab; }
+
+.schengen-toggle {
+  display: flex; align-items: flex-start; gap: 12px; margin-top: 12px; padding: 12px 14px;
+  border: 2px solid #c9a45c; border-radius: 12px; background: #fffaf0; cursor: pointer;
+}
+.schengen-toggle input { width: 22px; height: 22px; margin-top: 2px; accent-color: #0f2a4a; flex: 0 0 auto; }
+.schengen-toggle .st-title { font-size: 17px; font-weight: 800; color: #0f2a4a; }
+.schengen-toggle .st-desc { font-size: 13px; color: #5d6b7a; margin-top: 2px; line-height: 1.45; }
+.simple-amt { font-size: 18px !important; font-weight: 700; padding: 12px 14px !important; }
+.plan-simple-hint { margin: 0 0 10px; color: #2a6b3f; font-size: 14px; font-weight: 600; }

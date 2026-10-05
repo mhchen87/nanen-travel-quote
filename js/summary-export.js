@@ -13,7 +13,7 @@
     h += '<div class="sum-root" id="summaryCapture">';
     if (quote.sample) h += '<div class="sum-sample">⚠ 範例資料・非正式報價</div>';
     h += '<header class="sum-hero">';
-    h += '<div class="sum-kicker">旅平險 三方案總表</div>';
+    h += '<div class="sum-kicker">旅平險 三方案總表' + (quote.schengen ? '　<span class="hero-schengen">申根／計畫二</span>' : '') + '</div>';
     h += '<div class="sum-title"><span class="dest">' + TQ.esc(quote.destination || '—') + '</span>';
     h += '<span class="days">' + TQ.esc(quote.days || '—') + '<small> 天</small></span></div>';
     if (dates) h += '<div class="sum-dates">' + TQ.esc(dates) + '</div>';

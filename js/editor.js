@@ -50,16 +50,53 @@
     if (!q.dateFormat) q.dateFormat = 'roc';
     if (!q.lifeRateType) q.lifeRateType = 'agency';
     if (!q.ageBand) q.ageBand = '18-65';
+    if (typeof q.schengen !== 'boolean') q.schengen = false;
     if (!q.lifeRegion) {
-      q.lifeRegion = (window.LIFE_RATES && LIFE_RATES.guessLifeRegion(q.destination)) || 'asia14';
+      q.lifeRegion = q.schengen ? 'other' : ((window.LIFE_RATES && LIFE_RATES.guessLifeRegion(q.destination)) || 'asia14');
     }
+    // 方案一／二預設含人壽；方案三不含
+    q.plans.forEach(function (p, idx) {
+      if (p.life && typeof p.life.enabled !== 'boolean') p.life.enabled = idx < 2;
+      if (q.schengen && p.life && p.life.enabled) p.life.oaa = false;
+    });
     return q;
+  }
+
+
+  function applySchengenMode(on) {
+    Q.schengen = !!on;
+    if (on) {
+      Q.lifeRegion = 'other';
+      // 歐洲 OH1 限額調整多為 200%
+      if (!Q.lifeRegionPct || Number(Q.lifeRegionPct) === 100) Q.lifeRegionPct = 200;
+      Q.plans.forEach(function (p) {
+        if (p.life && p.life.enabled) {
+          p.life.oaa = false;
+          // 離線表無「國外其他」費率 → 清掉自動壽險保費，改手填
+          if (p.life._premAuto || true) { p.life.premium = null; p.life._premAuto = false; }
+        }
+        p.property._appliedCode = null; // 強制改套 P2
+        if (p.property.planCode && /^P1-G/.test(p.property.planCode)) p.property.planCode = '';
+      });
+    } else {
+      Q.lifeRegion = (window.LIFE_RATES && LIFE_RATES.guessLifeRegion(Q.destination)) || 'asia14';
+      Q.lifeRegionPct = TQ.guessRegionPct(Q.destination);
+      Q.plans.forEach(function (p) {
+        if (p.life && p.life.enabled) p.life.oaa = (Q.lifeRegion === 'asia14');
+        p.property._appliedCode = null;
+        if (p.property.planCode && /^P2-G/.test(p.property.planCode)) p.property.planCode = '';
+      });
+    }
+    var lr = form.querySelector('[data-k="lifeRegion"]');
+    if (lr) lr.value = Q.lifeRegion;
+    var lp = form.querySelector('[data-k="lifeRegionPct"]');
+    if (lp) lp.value = Q.lifeRegionPct;
   }
 
   /* ---------- 產險整包自動帶入（保額／天數）＋人壽保費查表 ---------- */
   /** 依保額（或進階 planCode）套用不便險／其他保障／住院醫療等；回傳是否異動項目（需重建表單） */
   function applyPropertyCoverage(plan) {
-    var preset = TQ.resolvePropertyPreset(plan.property);
+    var preset = TQ.resolvePropertyPreset(plan.property, Q);
     if (!preset) {
       plan.property._premTip = '尚無對應產險方案（請填保額 200／300／500／1000，或用進階下拉）';
       plan.property._covAuto = false;
@@ -93,7 +130,7 @@
       if (applyPropertyCoverage(p)) needRebuild = true;
 
       if (!skipAutoOnce.prop[i]) {
-        var pr = TQ.lookupPropertyPremium(p.property, Q.days);
+        var pr = TQ.lookupPropertyPremium(p.property, Q.days, Q);
         if (pr.preset) {
           p.property.planCode = pr.preset.code;
           if (!p.property._appliedCode) p.property._appliedCode = pr.preset.code;
@@ -126,7 +163,9 @@
           p.life._premAuto = true;
         } else {
           if (p.life._premAuto) p.life.premium = null;
-          p.life._premTip = lr.tip;
+          p.life._premTip = Q.schengen
+            ? '申根人壽需 GPTA「國外其他」費率（離線表僅亞洲14國＋OAA）；請手填保費'
+            : lr.tip;
           p.life._premAuto = false;
         }
       } else if (!window.LIFE_RATES) {
@@ -192,50 +231,63 @@
   }
   function planForm(i) {
     var b = 'plans.' + i + '.';
+    var plan = Q.plans[i];
+    var hasLife = !!(plan.life && plan.life.enabled);
     var h = '<section class="ed-card plan-form" data-plan="' + i + '"' + (i === activePlan ? '' : ' hidden') + '>';
-    h += '<h2>' + esc(Q.plans[i].name || ('方案' + (i + 1))) + '</h2>';
-    h += '<div class="grid g2">' + field('方案名稱', b + 'name', { type: 'text' }) + field('副標（例：雙實支保障＋不便險）', b + 'tagline', { type: 'text' }) + '</div>';
+    h += '<h2>' + esc(plan.name || ('方案' + (i + 1))) +
+      (plan.recommended ? ' <span class="reco-badge" style="font-size:13px">推薦</span>' : '') + '</h2>';
+    h += '<p class="plan-simple-hint">' + (hasLife
+      ? '此方案只需填：人壽保額、產險保額（其餘自動）'
+      : '此方案只需填：產險保額（純產險，無人壽）') +
+      (Q.schengen ? '　｜已勾選申根→產險用計畫二（突發疾病 150萬）' : '') + '</p>';
+
+    h += '<div class="grid g2">';
+    if (hasLife) {
+      h += field('人壽保額 AT1（萬）', b + 'life.at1Wan', { hint: 'OH1／MR 自動＝AT1×10%；保費自動查表', auto: true });
+    }
+    h += field('產險保額（萬）', b + 'property.deathWan', {
+      hint: Q.schengen ? '對計畫二 P2-G*（200／300／500／1000／1500）' : '對計畫一 P1-G*（200／300／500／1000）',
+      auto: true
+    });
+    h += '</div>';
+    h += '<p class="hint" data-life-prem-tip="' + i + '"></p>';
+    h += '<p class="hint" data-prop-prem-tip="' + i + '"></p>';
+
+    h += '<details class="prop-advanced" style="margin-top:10px"><summary>進階（名稱／附約／細項／手改保費）</summary>';
+    h += '<div class="grid g2" style="margin-top:8px">' +
+      field('方案名稱', b + 'name', { type: 'text' }) +
+      field('副標', b + 'tagline', { type: 'text' }) +
+      '</div>';
     h += '<label class="check" style="margin-top:8px"><input type="checkbox" data-k="' + b + 'recommended"> 標示「推薦」</label>';
 
-    h += '<div class="sub-box life-box"><label class="check"><input type="checkbox" data-k="' + b + 'life.enabled"> <b>含人壽（富邦人壽 Go安行）</b></label>';
+    h += '<div class="sub-box life-box" style="margin-top:10px"><label class="check"><input type="checkbox" data-k="' + b + 'life.enabled"> <b>含人壽</b></label>';
     h += '<div class="grid g3" style="margin-top:8px">' +
-      field('AT1 主約（萬）', b + 'life.at1Wan') +
-      field('OH1 海外突發疾病（萬）', b + 'life.oh1Wan', { hint: '空白＝自動 AT1×10%', auto: true }) +
-      field('MR 意外醫療（萬）', b + 'life.mrWan', { hint: '空白＝自動 AT1×10%', auto: true }) +
+      field('OH1（萬）', b + 'life.oh1Wan', { hint: '空白＝AT1×10%', auto: true }) +
+      field('MR（萬）', b + 'life.mrWan', { hint: '空白＝AT1×10%', auto: true }) +
+      field('人壽保費（元）', b + 'life.premium', { hint: '可手改', auto: true }) +
       '</div>';
-    h += '<label class="check" style="margin-top:8px"><input type="checkbox" data-k="' + b + 'life.oaa"> OAA 海外醫療專機運送（限亞洲14國）</label>';
+    h += '<label class="check" style="margin-top:8px"><input type="checkbox" data-k="' + b + 'life.oaa"> OAA（限亞洲14國）</label>';
     h += '<div class="grid g3" style="margin-top:8px">' +
-      field('人壽 住院限額（元）', b + 'life.hospitalYuan', { hint: '空白＝自動 OH1×地區%', auto: true }) +
-      field('人壽 門診每日（元）', b + 'life.outpatientYuan', { hint: '空白＝自動 OH1×3%×地區%', auto: true }) +
-      field('人壽 急診每日（元）', b + 'life.erYuan', { hint: '空白＝自動 OH1×6%×地區%', auto: true }) +
-      '</div>';
-    h += '<div class="grid g2" style="margin-top:8px">' +
-      field('人壽保費（元）', b + 'life.premium', { hint: '精確相符才自動帶入，可手改', auto: true }) +
-      '</div>';
-    h += '<p class="hint" data-life-prem-tip="' + i + '"></p>';
-    h += '</div>';
+      field('人壽住院（元）', b + 'life.hospitalYuan', { hint: '空白＝自動', auto: true }) +
+      field('人壽門診每日（元）', b + 'life.outpatientYuan', { hint: '空白＝自動', auto: true }) +
+      field('人壽急診每日（元）', b + 'life.erYuan', { hint: '空白＝自動', auto: true }) +
+      '</div></div>';
 
-    h += '<div class="sub-box"><b>產險（富邦產險 新快樂旅綜+）</b>';
-    h += '<p class="hint auto" style="margin:6px 0 8px">只需填「產險保額」；不便險、其他保障、住院／意外醫療額度與保費會依保額＋天數自動帶入（DM 2～10 天有保費）。</p>';
-    h += '<div class="grid g2">' +
-      field('產險保額（萬）＝意外身故失能', b + 'property.deathWan', { hint: '常用 300／500；對應計畫一一般', auto: true }) +
-      field('產險保費（元）', b + 'property.premium', { hint: 'DM 2～10 天自動，可手改', auto: true }) +
-      '</div>';
-    h += '<p class="hint" data-prop-prem-tip="' + i + '"></p>';
-    h += '<details class="prop-advanced" style="margin-top:8px"><summary>進階（計畫二／租車／細項）</summary>';
+    h += '<div class="sub-box" style="margin-top:10px"><b>產險細項</b>';
     h += '<div class="preset-row" style="margin-top:8px"><label>改選完整方案<select data-preset="' + i + '">' +
-      presetOptions(Q.plans[i].property.planCode) + '</select></label></div>';
+      presetOptions(plan.property.planCode) + '</select></label></div>';
     h += '<div class="grid g3">' +
-      field('方案代碼', b + 'property.planCode', { type: 'text', ph: '例：P1-G500' }) +
-      field('方案名稱（內部參考）', b + 'property.label', { type: 'text' }) +
-      field('突發疾病 住院（萬）', b + 'property.hospitalWan') +
-      field('突發疾病 門診（元）', b + 'property.outpatientYuan', { hint: '空白＝自動 住院×2%', auto: true }) +
-      field('突發疾病 急診（元）', b + 'property.erYuan', { hint: '空白＝自動 住院×5%', auto: true }) +
+      field('方案代碼', b + 'property.planCode', { type: 'text' }) +
+      field('產險保費（元）', b + 'property.premium', { hint: '可手改', auto: true }) +
+      field('突發疾病住院（萬）', b + 'property.hospitalWan') +
+      field('門診（元）', b + 'property.outpatientYuan', { hint: '空白＝自動', auto: true }) +
+      field('急診（元）', b + 'property.erYuan', { hint: '空白＝自動', auto: true }) +
       field('意外醫療（萬）', b + 'property.accidentMedicalWan') +
-      '</div></details>';
+      '</div>';
     h += listEditor(i, 'inconvenience', '不便險項目');
     h += listEditor(i, 'others', '其他產險保障');
-    h += '</div>';
+    h += '</div></details>';
+
     h += '<div class="sumbar" data-sum="' + i + '"></div>';
     h += '</section>';
     return h;
@@ -277,8 +329,11 @@
     if (mProp) { skipAutoOnce.prop[Number(mProp[1])] = true; Q.plans[Number(mProp[1])].property._premAuto = false; }
 
     // 改關鍵欄位 → 恢復自動
-    if (k === 'days' || k === 'startDate' || k === 'endDate' || k === 'ageBand' || k === 'lifeRegion' || k === 'lifeRateType' || k === 'destination') {
+    if (k === 'days' || k === 'startDate' || k === 'endDate' || k === 'ageBand' || k === 'lifeRegion' || k === 'lifeRateType' || k === 'destination' || k === 'schengen') {
       skipAutoOnce.life = {}; skipAutoOnce.prop = {};
+    }
+    if (k === 'schengen') {
+      applySchengenMode(!!v);
     }
     var mAt = /^plans\.(\d+)\.life\.(at1Wan|oh1Wan|mrWan|oaa|enabled)$/.exec(k);
     if (mAt) delete skipAutoOnce.life[Number(mAt[1])];
@@ -462,11 +517,15 @@
       plan.property._covAuto = true;
       delete skipAutoOnce.prop[i];
       buildPlanUI(); update();
-      var pr = TQ.lookupPropertyPremium(plan.property, Q.days);
+      var pr = TQ.lookupPropertyPremium(plan.property, Q.days, Q);
       toast(pr.found ? ('已帶入 ' + p.label + '，' + Q.days + ' 天保費 ' + TQ.comma(pr.premium) + ' 元') : (pr.tip || '已帶入保障'));
       return;
     }
-    if (t.hasAttribute('data-k') && (t.type === 'checkbox' || t.tagName === 'SELECT')) { readInput(t); update(); }
+    if (t.hasAttribute('data-k') && (t.type === 'checkbox' || t.tagName === 'SELECT')) {
+      readInput(t);
+      if (t.getAttribute('data-k') === 'schengen') { buildPlanUI(); return; }
+      update();
+    }
   });
   form.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]');
