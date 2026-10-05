@@ -3,7 +3,10 @@
  */
 (function () {
   'use strict';
-  var STORE_KEY = 'tq-editor-draft-v1';
+  var STORE_KEY = 'tq-editor-draft-v2';
+  var STORE_KEY_LEGACY = 'tq-editor-draft-v1';
+  /** 草稿結構版：選單保額／AT1 100萬刻度；舊稿需 migrate */
+  var DRAFT_VERSION = 2;
   var PRESETS = (window.PROPERTY_PRESETS && window.PROPERTY_PRESETS.plans) || [];
   var form = document.getElementById('form');
   var preview = document.getElementById('preview');
@@ -23,6 +26,71 @@
     var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
     document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2200);
   }
+
+  function snapAt1(n) {
+    n = Number(n);
+    if (!isFinite(n) || n <= 0) return null;
+    n = Math.round(n / 100) * 100;
+    if (n < 100) n = 100;
+    if (n > 2000) n = 2000;
+    return n;
+  }
+  function snapDeath(n, schengen) {
+    var opts = schengen ? [200, 300, 500, 1000, 1500] : [200, 300, 500, 1000];
+    n = Number(n);
+    if (opts.indexOf(n) >= 0) return n;
+    if (!isFinite(n) || n <= 0) return null;
+    var best = opts[0];
+    opts.forEach(function (o) { if (Math.abs(o - n) < Math.abs(best - n)) best = o; });
+    return best;
+  }
+  /** 舊 localStorage 草稿 → 新選單結構；丟掉會卡住 UI 的 planCode */
+  function migrateDraft(q) {
+    if (!q || typeof q !== 'object') return null;
+    q = clone(q);
+    var ver = Number(q._draftVersion || 0);
+    var sch = !!q.schengen;
+    if (!q.plans) q.plans = [];
+    for (var i = 0; i < 3; i++) {
+      if (!q.plans[i]) continue;
+      var p = q.plans[i];
+      p.life = p.life || {};
+      p.property = p.property || {};
+      // 清掉舊 planCode，改由保額對應 P1/P2，避免蓋回 select
+      if (p.property.planCode) p.property.planCode = '';
+      p.property._appliedCode = null;
+      var defDeath = [500, 300, 300][i];
+      var d = snapDeath(p.property.deathWan, sch);
+      p.property.deathWan = d != null ? d : defDeath;
+      if (p.life.enabled !== false && i < 2) {
+        var a = snapAt1(p.life.at1Wan);
+        p.life.at1Wan = a != null ? a : [500, 300][i];
+      }
+    }
+    q._draftVersion = DRAFT_VERSION;
+    return q;
+  }
+  function readStoredDraft() {
+    var raw = null, fromLegacy = false;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (e) {}
+    if (!raw) {
+      try { raw = localStorage.getItem(STORE_KEY_LEGACY); fromLegacy = !!raw; } catch (e2) {}
+    }
+    if (!raw) return null;
+    var q;
+    try { q = JSON.parse(raw); } catch (e3) { return null; }
+    if (!q || typeof q !== 'object') return null;
+    var ver = Number(q._draftVersion || 0);
+    if (ver < DRAFT_VERSION || fromLegacy) {
+      q = migrateDraft(q);
+      try {
+        localStorage.removeItem(STORE_KEY_LEGACY);
+        if (q) localStorage.setItem(STORE_KEY, JSON.stringify(q));
+      } catch (e4) {}
+    }
+    return q;
+  }
+
   function blankPlan(i) {
     var tag = ['雙實支＋醫療額度高＋不便險', '雙實支保障＋不便險', '基本保障＋不便險'][i] || '';
     var codes = ['P1-G500', 'P1-G300', 'P1-G300'];
@@ -60,7 +128,17 @@
     q.plans.forEach(function (p, idx) {
       if (p.life && typeof p.life.enabled !== 'boolean') p.life.enabled = idx < 2;
       if (q.schengen && p.life && p.life.enabled) p.life.oaa = false;
+      // 對齊 select 可選值
+      var sd = snapDeath(p.property.deathWan, !!q.schengen);
+      if (sd != null) p.property.deathWan = sd;
+      else if (!TQ.num(p.property.deathWan)) p.property.deathWan = [500, 300, 300][idx];
+      if (p.life && p.life.enabled) {
+        var sa = snapAt1(p.life.at1Wan);
+        if (sa != null) p.life.at1Wan = sa;
+        else if (!TQ.num(p.life.at1Wan)) p.life.at1Wan = [500, 300][idx];
+      }
     });
+    q._draftVersion = DRAFT_VERSION;
     return q;
   }
 
@@ -557,6 +635,7 @@
 
   function scrubForSave(q) {
     var c = clone(q);
+    c._draftVersion = DRAFT_VERSION;
     (c.plans || []).forEach(function (p) {
       if (p.life) { delete p.life._premTip; delete p.life._premAuto; }
       if (p.property) {
@@ -574,7 +653,11 @@
     checks();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(scrubForSave(Q))); } catch (e) {}
+      try {
+        var payload = JSON.stringify(scrubForSave(Q));
+        localStorage.setItem(STORE_KEY, payload);
+        localStorage.removeItem(STORE_KEY_LEGACY);
+      } catch (e) {}
     }, 300);
     document.getElementById('sharePanel').hidden = true;
   }
@@ -756,6 +839,6 @@
 
   var initial = null;
   try { initial = TQ.decodeHash(location.hash); } catch (e) { alert('網址中的報價資料無法解析：' + e.message); }
-  if (!initial) { try { initial = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) {} }
+  if (!initial) initial = readStoredDraft();
   load(initial || window.SAMPLE_QUOTE);
 })();
