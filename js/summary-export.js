@@ -60,7 +60,7 @@
         h += '</ul>';
       }
       h += c.lifePremiumMissing
-        ? '<div class="sum-prem">壽 需另行試算 ＋ 產 ' + TQ.comma(P.premium) + '（人壽另計）</div>'
+        ? '<div class="sum-prem">壽 ' + (c.lifeOverCap ? 'AT1 超過年齡上限' : '需另行試算') + ' ＋ 產 ' + TQ.comma(P.premium) + '（人壽另計）</div>'
         : '<div class="sum-prem">壽 ' + TQ.comma(L.premium) + ' ＋ 產 ' + TQ.comma(P.premium) +
           ' ＝ <b>' + TQ.comma(c.premium) + '</b> 元</div>';
       h += '</section>';
@@ -68,8 +68,7 @@
     h += '</div>';
     h += '<footer class="sum-foot">';
     h += '<div class="u">富邦人壽 ' + TQ.esc(a.unit || '南恩通訊處') + '</div>';
-    h += '<div class="p">' + TQ.esc(a.title || '業務經理') + ' <b>' + TQ.esc(a.name || '陳銘旭') + '</b>';
-    h += ' ／ ' + TQ.esc(a.managerTitle || '處經理') + ' <b>' + TQ.esc(a.manager || '林秋慧') + '</b></div>';
+    h += '<div class="p">' + TQ.esc(a.title || '業務經理') + ' <b>' + TQ.esc(a.name || '陳銘旭') + '</b></div>';
     h += '<div class="note">實際以保單條款及核保為準</div>';
     h += '</footer></div>';
     return h;

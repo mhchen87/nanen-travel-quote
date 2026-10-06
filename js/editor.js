@@ -117,7 +117,9 @@
         else if (!p.property.planCode) p.property.planCode = ['P1-G500', 'P1-G300', 'P1-G300'][idx];
       }
     });
-    q.agent = q.agent || { unit: '南恩通訊處', name: '陳銘旭', title: '業務經理', manager: '林秋慧', managerTitle: '處經理' };
+    q.agent = q.agent || { unit: '南恩通訊處', name: '陳銘旭', title: '業務經理' };
+    // 簽名不再列處經理（舊稿／舊連結一併移除）
+    delete q.agent.manager; delete q.agent.managerTitle;
     var domesticDest = !!TQ.detectDomestic(q.destination);
     if (!q.lifeRegionPct) q.lifeRegionPct = domesticDest ? 100 : TQ.guessRegionPct(q.destination);
     if (!q.dateFormat) q.dateFormat = 'roc';
@@ -225,7 +227,7 @@
     });
     return out;
   }
-  /** 年齡欄提示（紅字＝必填／無效；橘字＝66歲以上需另行試算；藍字＝年齡帶與上限） */
+  /** 年齡欄提示（紅字＝必填／無效；橘字＝80歲以上無產險方案；藍字＝年齡帶與上限） */
   function updateAgeWarning() {
     var ai = TQ.ageInfo(Q.age);
     var w = document.getElementById('ageWarn'), hint = document.getElementById('ageHint');
@@ -240,10 +242,9 @@
         note = 'GPTA 年齡帶：' + ai.label + '｜人壽 AT1 上限 ' + ai.at1Max + ' 萬' +
           '｜產險可選：' + propertyDeathOptionsFor(ai).map(function (x) { return x + '萬'; }).join('／');
       }
-      if (!ai.lifeRates && !ai.child) {
-        soft = true;
-        msg = '⚠ ' + ai.label + '：人壽保費需另行試算（GPTA，系統無此年齡費率），AT1 上限 ' + ai.at1Max + ' 萬' +
-          (ai.age >= 80 ? '；產險新快樂旅綜+ 投保年齡最高 79 歲，無可投保方案' : '；產險可選 ' + propertyDeathOptionsFor(ai).join('／') + ' 萬（DM 投保年齡）');
+      if (!ai.child && ai.age >= 66) {
+        note += '（66歲以上人壽保費同 18～65，僅 AT1 上限不同）';
+        if (ai.age >= 80) { soft = true; msg = '⚠ ' + ai.label + '：產險新快樂旅綜+ 投保年齡最高 79 歲，無可投保方案'; }
       } else if (ai.band === '15-17') {
         note += '（15～17歲費率同 18～65；產險 1000萬以上、租車限 18 歲以上）';
       }
@@ -554,7 +555,7 @@
       var cap = ai.valid ? ai.at1Max : 2000;
       h += selectField('人壽保額 AT1（萬）', b + 'life.at1Wan', withCurrent(at1Options(cap), plan.life.at1Wan, '超過年齡上限 ' + cap + ' 萬'), {
         hint: (ai.valid ? ai.label + '：AT1 100～' + cap + ' 萬' : '以 100 萬為單位（100～2000）') + '；OH1／MR＝AT1×10%' +
-          (ai.valid && !ai.lifeRates ? '；保費需另行試算' : '，保費自動查表'), auto: true
+          '，保費自動查表', auto: true
       });
     }
     if (child) {
@@ -787,9 +788,6 @@
     if (!Q.destination) add('warn', '尚未填寫目的地。');
     quoteBlockers().forEach(function (m) { add('err', m + '（目前無法下載三方案總表圖）'); });
     var aiC = TQ.ageInfo(Q.age);
-    if (aiC.valid && !aiC.child && !aiC.lifeRates && Q.plans.some(function (p) { return p.life && p.life.enabled; })) {
-      add('warn', aiC.label + '：人壽保費需另行試算（GPTA），請於各方案「進階」手填人壽保費；AT1 上限 ' + aiC.at1Max + ' 萬。');
-    }
     if (aiC.valid && aiC.child) add('ok', '未滿15足歲：人壽為兒童傷害醫療旅平險 MRC 60萬＋OH1＋OAA（無 AT1／MR）；產險為兒童方案。');
     var dsC = dateState();
     if (dsC.days > 30) add('warn', '共 ' + dsC.days + ' 天：自動費率僅涵蓋 1～30 天，超出範圍的保費請以 GPTA／產險試算後手填。');

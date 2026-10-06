@@ -170,14 +170,15 @@
   }
 
   /* ---------- 年齡（足歲）→ GPTA 年齡帶／人壽 AT1 上限（Go安行 DM：(Q)AT1保險金額與年齡限制） ---------- */
+  // 66 歲以上保費與 18～65 相同（陳銘旭確認 2026-10-06），僅 AT1 上限不同
   var AGE_BANDS = [
     { band: 'under15', min: 0, max: 14, label: '未滿15足歲', at1Max: 0, child: true, lifeRates: 'u15' },
     { band: '15-17', min: 15, max: 17, label: '15足歲～17歲', at1Max: 600, lifeRates: 'adult' },
     { band: '18-65', min: 18, max: 65, label: '18～65歲', at1Max: 2000, lifeRates: 'adult' },
-    { band: '66-70', min: 66, max: 70, label: '66～70歲', at1Max: 1000, lifeRates: null },
-    { band: '71-75', min: 71, max: 75, label: '71～75歲', at1Max: 500, lifeRates: null },
-    { band: '76-80', min: 76, max: 80, label: '76～80歲', at1Max: 300, lifeRates: null },
-    { band: '81-100', min: 81, max: 100, label: '81～100歲', at1Max: 100, lifeRates: null }
+    { band: '66-70', min: 66, max: 70, label: '66～70歲', at1Max: 1000, lifeRates: 'adult' },
+    { band: '71-75', min: 71, max: 75, label: '71～75歲', at1Max: 500, lifeRates: 'adult' },
+    { band: '76-80', min: 76, max: 80, label: '76～80歲', at1Max: 300, lifeRates: 'adult' },
+    { band: '81-100', min: 81, max: 100, label: '81～100歲', at1Max: 100, lifeRates: 'adult' }
   ];
   var CHILD_MRC_WAN = 60;          // 未滿15足歲 國外套裝：(Q)MRC 定額 60萬（兒童主約・傷害醫療每一事故最高）
   var CHILD_OH1_OPTIONS = [60, 120]; // 未滿15足歲 OH1：60萬（國外旅遊適用）或 120萬（醫療加值）
@@ -250,6 +251,7 @@
     return {
       life: L, prop: P, child: child,
       lifePremiumMissing: L.enabled && !isSet(life.premium),
+      lifeOverCap: L.enabled && !child && (function () { var a = ageInfo(quote.age); return a.valid && num(life.at1Wan) > a.at1Max; })(),
       death: L.at1 + P.death,
       hospital: L.hospital + P.hospital,
       outpatient: L.outpatient + P.outpatient,
@@ -406,7 +408,7 @@
 
     h += '<footer class="premium"><div class="prem-label">保費</div>' +
       (c.lifePremiumMissing
-        ? '<div class="prem-formula">壽 <b>需另行試算</b> ＋ 產 <b>' + comma(P.premium) + '</b>（人壽保費另計）</div></footer>'
+        ? '<div class="prem-formula">壽 <b>' + (c.lifeOverCap ? 'AT1 超過年齡上限' : '需另行試算') + '</b> ＋ 產 <b>' + comma(P.premium) + '</b>（人壽保費另計）</div></footer>'
         : '<div class="prem-formula">壽 <b>' + comma(L.premium) + '</b> ＋ 產 <b>' + comma(P.premium) + '</b> ＝ <span class="prem-total">' + comma(c.premium) + '</span> 元</div></footer>');
     h += '</article>';
     return h;
@@ -451,8 +453,7 @@
   function renderFooter(quote) {
     var a = quote.agent || {};
     return '<div class="sig-unit">富邦人壽 ' + esc(a.unit || '南恩通訊處') + '</div>' +
-      '<div class="sig-people"><span>' + esc(a.title || '業務經理') + ' <b>' + esc(a.name || '陳銘旭') + '</b></span>' +
-      '<span class="sep">／</span><span>' + esc(a.managerTitle || '處經理') + ' <b>' + esc(a.manager || '林秋慧') + '</b></span></div>';
+      '<div class="sig-people"><span>' + esc(a.title || '業務經理') + ' <b>' + esc(a.name || '陳銘旭') + '</b></span></div>';
   }
 
   function renderQuote(quote, root) {

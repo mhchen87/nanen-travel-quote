@@ -322,8 +322,6 @@ window.SAMPLE_QUOTE = {
   "agent": {
     "unit": "南恩通訊處",
     "name": "陳銘旭",
-    "title": "業務經理",
-    "manager": "林秋慧",
-    "managerTitle": "處經理"
+    "title": "業務經理"
   }
 };

@@ -106,16 +106,12 @@
     if (ai.valid && at1 > ai.at1Max) {
       return { found: false, overCap: true, tip: ai.label + ' AT1 最高 ' + ai.at1Max + ' 萬，目前 ' + at1 + ' 萬超過上限；請調降 AT1' };
     }
-    // 66 歲以上：無抓表費率 → 不自動計算（禁止推估）
-    if (ai.valid && !ai.lifeRates) {
-      return { found: false, noRates: true, tip: ai.label + '：人壽保費需另行試算（GPTA）；AT1 上限 ' + ai.at1Max + ' 萬' };
-    }
     if (!isFinite(days) || days <= 0) {
       return { found: false, tip: '請先填投保天數' };
     }
 
     // 明確提示目前離線表的覆蓋範圍
-    var coverTip = '離線表範圍：旅行社／快易保 × 亞洲14國 × 15～65歲 × OAA投保 × AT1 100～2000萬（每100；15～17歲上限600）× 1～30天';
+    var coverTip = '離線表範圍：旅行社／快易保 × 亞洲14國 × 15歲以上（66歲以上同 18～65 費率，僅 AT1 上限不同）× OAA投保 × AT1 100～2000萬（每100；15～17歲上限600）× 1～30天';
     if (rateType !== 'agency') {
       return { found: false, tip: '尚無此費率類型（' + rateType + '）。' + coverTip + '；請用 GPTA 試算後手填' };
     }
@@ -123,7 +119,9 @@
       return { found: false, tip: '尚無「' + region + '」地區費率（OAA 亦僅限亞洲14國）。' + coverTip + '；請用 GPTA 試算後手填' };
     }
     // 15～17歲 費率與 18～65 相同（GPTA 2026-10-06 抽查 500/5天=850、500/10天=1,119、300/5天=617）
-    if (ageBand !== '18-65' && ageBand !== '15-17') {
+    // 66 歲以上費率亦同 18～65（僅 AT1 上限不同，上方已檢查）
+    var adultBand = ai.valid ? ai.lifeRates === 'adult' : (ageBand === '18-65' || ageBand === '15-17');
+    if (!adultBand) {
       return { found: false, tip: '尚無年齡帶「' + ageBand + '」費率。' + coverTip + '；請用 GPTA 試算後手填' };
     }
     if (!oaa) {
