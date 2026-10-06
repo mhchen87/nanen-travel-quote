@@ -13,6 +13,7 @@
     h += '<div class="sum-root" id="summaryCapture">';
     if (quote.sample) h += '<div class="sum-sample">⚠ 範例資料・非正式報價</div>';
     h += '<header class="sum-hero">';
+    h += TQ.renderBrand('sum-brand');
     h += '<div class="sum-kicker">旅平險 三方案總表' + (quote.schengen ? '　<span class="hero-schengen">申根／計畫二</span>' : '') + '</div>';
     h += '<div class="sum-title"><span class="dest">' + TQ.esc(quote.destination || '—') + '</span>';
     h += '<span class="days">' + TQ.esc(quote.days || '—') + '<small> 天</small></span></div>';
@@ -93,14 +94,20 @@
     var host = ensureHost();
     host.innerHTML = buildSummaryHtml(quote);
     var el = host.querySelector('#summaryCapture');
-    return global.html2canvas(el, {
+    // 等 logo（及所有圖片）載入完成再截圖，避免第一次下載 logo 空白
+    var imgs = Array.prototype.slice.call(el.querySelectorAll('img'));
+    var ready = Promise.all([TQ.brandLogoReady ? TQ.brandLogoReady() : Promise.resolve()].concat(imgs.map(function (img) {
+      if (img.complete && img.naturalWidth) return img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+      return new Promise(function (res) { img.onload = img.onerror = function () { res(); }; });
+    })));
+    return ready.then(function () { return global.html2canvas(el, {
       scale: 2,
       backgroundColor: '#f4f6f9',
       useCORS: true,
       logging: false,
       width: el.scrollWidth,
       height: el.scrollHeight
-    }).then(function (canvas) {
+    }); }).then(function (canvas) {
       return new Promise(function (resolve) {
         canvas.toBlob(function (blob) {
           var name = (quote.sample ? '範例_' : '') + (quote.destination || '旅平險') +

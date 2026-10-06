@@ -218,3 +218,10 @@ input.is-domestic { border-color: #c62828 !important; box-shadow: 0 0 0 2px rgba
   .ed-title b { display: block; }
   .ed-title .ed-internal { margin: 3px 0 0; }
 }
+
+/* 總表圖品牌列（同編輯器頁首，不含內部使用標記） */
+.sum-brand-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(230, 207, 154, .3); }
+.sum-brand-logo { display: block; width: 40px; height: 57px; flex: none; }
+.sum-brand-text { display: flex; flex-direction: column; line-height: 1.35; }
+.sum-brand-slogan { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: #fff; }
+.sum-brand-title { font-size: 19px; font-weight: 800; color: #e6cf9a; letter-spacing: .02em; }

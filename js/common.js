@@ -4,6 +4,29 @@
 (function (global) {
   'use strict';
 
+  /* ---------- 品牌（客戶頁頁首、總表圖）：大心 logo＋兩行標題；不含「內部使用」標記 ---------- */
+  var ASSET_V = (function () {
+    try { var m = /[?&]v=([^&#]+)/.exec((document.currentScript && document.currentScript.src) || ''); return m ? m[1] : ''; } catch (e) { return ''; }
+  })();
+  var BRAND = {
+    slogan: '台南最大心，服務最用心',
+    title: '旅平險組合方案試算報價系統',
+    logo: 'img/logo.png' + (ASSET_V ? '?v=' + ASSET_V : ''),
+    logoAlt: '南恩通訊處 大心'
+  };
+  // 預先載入 logo（總表圖下載時不會出現空白 logo）
+  var brandLogoReady = (typeof Image === 'undefined') ? Promise.resolve() : new Promise(function (resolve) {
+    var im = new Image();
+    im.onload = im.onerror = function () { resolve(); };
+    im.src = BRAND.logo;
+  });
+  function renderBrand(prefix) {
+    prefix = prefix || 'brand';
+    return '<div class="' + prefix + '-bar"><img class="' + prefix + '-logo" src="' + BRAND.logo + '" alt="' + BRAND.logoAlt + '" width="40" height="57">' +
+      '<div class="' + prefix + '-text"><div class="' + prefix + '-slogan">' + BRAND.slogan + '</div>' +
+      '<div class="' + prefix + '-title">' + BRAND.title + '</div></div></div>';
+  }
+
   var LIFE_PRODUCT = '富邦人壽 Go安行旅平險';
   var PROPERTY_PRODUCT = '富邦產險 新快樂旅綜+';
   // 人壽 OH1 各項比例（Go安行 DM）：住院 100%、門診每日 3%、急診每日 6%（再乘以地區調整比例）
@@ -419,7 +442,7 @@
     var dates = '';
     if (quote.startDate || quote.endDate) dates = fmtDate(quote.startDate, mode) + ' ～ ' + fmtDate(quote.endDate, mode);
     var kicker = '旅平險 三方案報價' + (quote.schengen ? '　<span class="hero-schengen">申根／計畫二</span>' : '');
-    return '<div class="hero-kicker">' + kicker + '</div>' +
+    return renderBrand('brand') + '<div class="hero-kicker">' + kicker + '</div>' +
       '<h1 class="hero-title"><span class="dest">' + esc(quote.destination || '—') + '</span><span class="days">' +
       esc(quote.days || '—') + '<small> 天</small></span></h1>' +
       (dates ? '<div class="hero-dates">' + esc(dates) + '</div>' : '');
@@ -712,6 +735,7 @@
     detectDomestic: detectDomestic, DOMESTIC_WARNING: DOMESTIC_WARNING,
     AGE_BANDS: AGE_BANDS, ageInfo: ageInfo, isChildQuote: isChildQuote, childOh1Wan: childOh1Wan,
     CHILD_MRC_WAN: CHILD_MRC_WAN, CHILD_OH1_OPTIONS: CHILD_OH1_OPTIONS, propertyAgeCheck: propertyAgeCheck,
+    BRAND: BRAND, renderBrand: renderBrand, brandLogoReady: function () { return brandLogoReady; },
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
   };
 })(window);
