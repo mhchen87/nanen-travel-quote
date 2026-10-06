@@ -19,6 +19,8 @@
   var skipAutoOnce = { life: {}, prop: {} };
   /** 使用者手動改過申根勾選；目的地再變時重置，改回依目的地自動 */
   var schengenManual = false;
+  /** 舊分享連結／草稿只有天數、沒有出發回程日 → 沿用其天數（直到使用者填日期） */
+  var keptLinkDays = false;
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) { return TQ.esc(s); }
@@ -165,10 +167,51 @@
   }
   /* ---------- 國內地點（台灣／金門／馬祖／澎湖…）→ 警告＋擋報價 ---------- */
   function isDomesticDest() { return !!TQ.detectDomestic(Q && Q.destination); }
-  /** 擋下產生報價的問題（國內目的地、年齡未填／無效、AT1 超過年齡上限、產險方案不符 DM 投保年齡） */
+  /* ---------- 天數：只依出發／回程日自動計算（算頭算尾），無手填欄位 ---------- */
+  function dateState() {
+    var s = TQ.parseDateParts(Q.startDate), e = TQ.parseDateParts(Q.endDate);
+    if (s && e) {
+      var d = TQ.daysInclusive(Q.startDate, Q.endDate);
+      if (!d) return { days: null, error: '⚠ 回程日早於出發日，請確認日期' };
+      return { days: d };
+    }
+    if (keptLinkDays && !s && !e && TQ.num(Q.days) > 0) return { days: Number(Q.days), kept: true, missing: true };
+    return { days: null, missing: true };
+  }
+  /** 依日期同步 Q.days；有變動時恢復保費自動查表 */
+  function syncDaysFromDates() {
+    var st = dateState();
+    var nd = st.days == null ? null : st.days;
+    if ((Q.days == null ? null : Number(Q.days)) !== nd) {
+      Q.days = nd;
+      skipAutoOnce.life = {}; skipAutoOnce.prop = {};
+    }
+    return st;
+  }
+  function updateDaysDisplay(st) {
+    st = st || dateState();
+    var v = document.getElementById('daysAutoVal'), w = document.getElementById('dateWarn');
+    var txt = '', warn = '', soft = false;
+    if (st.error) warn = st.error;
+    else if (st.days) {
+      txt = '共 ' + st.days + ' 天' + (st.kept ? '（沿用原報價天數；請補填出發／回程日）' : '（算頭算尾）');
+      if (st.days > 30) { soft = true; warn = '⚠ 自動費率僅涵蓋 1～30 天，目前 ' + st.days + ' 天：超出範圍的保費請以 GPTA／產險試算後手填'; }
+    }
+    if (v) v.textContent = txt;
+    if (w) { w.hidden = !warn; w.textContent = warn; w.classList.toggle('soft', soft); }
+    ['startDate', 'endDate'].forEach(function (k) {
+      var el = form.querySelector('[data-k="' + k + '"]');
+      if (el) el.classList.toggle('is-domestic', !!st.error);
+    });
+  }
+
+  /** 擋下產生報價的問題（國內目的地、日期未填／回程早於出發、年齡未填／無效、AT1 超過年齡上限、產險方案不符 DM 投保年齡） */
   function quoteBlockers() {
     var out = [];
     if (isDomesticDest()) out.push(TQ.DOMESTIC_WARNING);
+    var ds = dateState();
+    if (ds.error) out.push(ds.error);
+    else if (ds.missing) out.push('⚠ 請填寫出發日與回程日（天數依日期自動計算）');
     var ai = TQ.ageInfo(Q && Q.age);
     if (!ai.valid) { out.push('⚠ ' + ai.error); return out; }
     Q.plans.forEach(function (p, i) {
@@ -621,7 +664,7 @@
         if (abSel) abSel.value = aiR.band;
       }
     }
-    if (k === 'age' || k === 'days' || k === 'startDate' || k === 'endDate' || k === 'ageBand' || k === 'lifeRegion' || k === 'lifeRateType' || k === 'destination' || k === 'schengen') {
+    if (k === 'age' || k === 'startDate' || k === 'endDate' || k === 'ageBand' || k === 'lifeRegion' || k === 'lifeRateType' || k === 'destination' || k === 'schengen') {
       skipAutoOnce.life = {}; skipAutoOnce.prop = {};
     }
     if (k === 'schengen') {
@@ -645,8 +688,8 @@
     }
 
     if (k === 'startDate' || k === 'endDate') {
-      var d = TQ.daysInclusive(Q.startDate, Q.endDate);
-      if (d && d > 0) { Q.days = d; var di = form.querySelector('[data-k="days"]'); if (di) di.value = d; }
+      keptLinkDays = false; // 已開始填日期 → 天數一律依日期
+      syncDaysFromDates();
     }
     if (k === 'destination' && isDomesticDest()) {
       // 國內地點（台灣／金門／馬祖／澎湖…）：顯示警告，不依此文字自動判斷申根／地區
@@ -685,14 +728,8 @@
 
   function refreshDerived() {
     // 起迄日 → 天數（算頭算尾）；必須在保費查表前更新
-    var synced = TQ.daysInclusive(Q.startDate, Q.endDate);
-    if (synced && synced > 0 && Number(Q.days) !== synced) {
-      Q.days = synced;
-      var diSync = form.querySelector('[data-k="days"]');
-      if (diSync) diSync.value = synced;
-      skipAutoOnce.life = {};
-      skipAutoOnce.prop = {};
-    }
+    var dsNow = syncDaysFromDates();
+    updateDaysDisplay(dsNow);
     var needRebuild = applyAutoPremiums();
     if (needRebuild && !rebuildingUI) {
       // 保障項目列數變了，重建表單一次（_appliedCode 已寫入，不會迴圈）
@@ -739,9 +776,6 @@
         '<span>意外醫療 <b>' + TQ.fmtYuan(c.accidentMedical) + '</b></span>' +
         '<span>保費 ' + lifeBadge + '壽<b>' + TQ.comma(c.life.premium) + '</b>＋' + propBadge + '產<b>' + TQ.comma(c.prop.premium) + '</b>＝<b>' + TQ.comma(c.premium) + '</b>元</span>';
     });
-    var dh = document.getElementById('daysHint');
-    var d = TQ.daysInclusive(Q.startDate, Q.endDate);
-    dh.textContent = d ? ('依日期計算：' + d + ' 天（算頭算尾，出發日與回程日都算）') : '請填出發日與回程日（天數＝算頭算尾）';
     document.getElementById('regionHint').textContent = isDomesticDest()
       ? '目的地為台灣國內地點，暫不自動判斷地區；請改填出國目的地'
       : '依目的地自動判斷，可手動調整（Go安行 DM 註3）';
@@ -758,9 +792,8 @@
       add('warn', aiC.label + '：人壽保費需另行試算（GPTA），請於各方案「進階」手填人壽保費；AT1 上限 ' + aiC.at1Max + ' 萬。');
     }
     if (aiC.valid && aiC.child) add('ok', '未滿15足歲：人壽為兒童傷害醫療旅平險 MRC 60萬＋OH1＋OAA（無 AT1／MR）；產險為兒童方案。');
-    if (!Q.startDate || !Q.endDate) add('warn', '尚未填寫出發／回程日期。');
-    var d = TQ.daysInclusive(Q.startDate, Q.endDate);
-    if (d && Q.days && d !== Number(Q.days)) add('warn', '天數（' + Q.days + '）與日期計算（' + d + ' 天）不同，請確認。');
+    var dsC = dateState();
+    if (dsC.days > 30) add('warn', '共 ' + dsC.days + ' 天：自動費率僅涵蓋 1～30 天，超出範圍的保費請以 GPTA／產險試算後手填。');
     Q.plans.forEach(function (p) {
       var n = p.name || '';
       if (p.life && p.life.enabled) {
@@ -816,6 +849,8 @@
 
   function load(q) {
     Q = normalize(clone(q));
+    // 舊連結／草稿：有天數但無出發回程日 → 沿用其天數；有日期則一律依日期重算
+    keptLinkDays = !!(q && TQ.num(q.days) > 0 && !TQ.parseDateParts(q.startDate) && !TQ.parseDateParts(q.endDate));
     activePlan = 0;
     skipAutoOnce = { life: {}, prop: {} };
     schengenManual = false;
@@ -945,32 +980,6 @@
     (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject())
       .then(function () { toast('已複製連結'); })
       .catch(function () { ta.select(); document.execCommand('copy'); toast('已複製連結'); });
-  });
-  document.getElementById('btnDownload').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(scrubForSave(Q), null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'quote_' + (Q.destination || '') + (Q.days || '') + '天_' + String(Q.startDate || '').replace(/-/g, '') + (Q.sample ? '_範例' : '') + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  });
-  document.getElementById('fileImport').addEventListener('change', function (e) {
-    var f = e.target.files[0]; if (!f) return;
-    var r = new FileReader();
-    r.onload = function () {
-      try { load(JSON.parse(r.result)); toast('已匯入 ' + f.name); }
-      catch (err) { alert('JSON 格式錯誤：' + err.message); }
-    };
-    r.readAsText(f, 'utf-8'); e.target.value = '';
-  });
-  document.getElementById('btnPasteLink').addEventListener('click', function () {
-    var s = prompt('貼上先前產生的分享連結：');
-    if (!s) return;
-    try {
-      var q = TQ.decodeHash(s.slice(s.indexOf('#')));
-      if (!q) throw new Error('連結中沒有報價資料');
-      load(q); toast('已由連結載入');
-    } catch (err) { alert('無法解析連結：' + err.message); }
   });
   document.getElementById('btnSample').addEventListener('click', function () {
     if (confirm('載入範例資料會覆蓋目前內容，確定？')) { load(window.SAMPLE_QUOTE); toast('已載入範例（已標示為範例）'); }
