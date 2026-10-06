@@ -225,3 +225,14 @@ input.is-domestic { border-color: #c62828 !important; box-shadow: 0 0 0 2px rgba
 .sum-brand-text { display: flex; flex-direction: column; line-height: 1.35; }
 .sum-brand-slogan { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: #fff; }
 .sum-brand-title { font-size: 19px; font-weight: 800; color: #e6cf9a; letter-spacing: .02em; }
+
+/* 業務員姓名（使用紀錄） */
+.ed-user { padding: 12px 16px; border-left: 4px solid var(--gold); }
+.ed-user label { font-weight: 700; color: var(--navy); }
+.ed-user-row { display: grid; grid-template-columns: auto 1fr 1fr; gap: 10px 14px; align-items: end; }
+.ed-user-row .dest-warn { grid-column: 1 / -1; margin-top: 0; }
+.ed-user-row input { max-width: none; width: 100%; }
+.ed-unit { display: flex; flex-direction: column; gap: 4px; }
+.ed-unit-lbl { font-size: 13px; color: var(--muted); }
+.ed-unit-val { display: inline-block; padding: 9px 12px; border-radius: 8px; background: #f1f4f8; border: 1px dashed var(--line); color: var(--navy); font-weight: 700; white-space: nowrap; }
+@media (max-width: 560px) { .ed-user-row { grid-template-columns: 1fr 1fr; } .ed-unit { grid-column: 1 / -1; flex-direction: row; align-items: center; } }

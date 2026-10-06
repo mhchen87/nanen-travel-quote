@@ -41,4 +41,6 @@
     if (/^#(q|j)=/.test(location.hash)) load();
   });
   load();
+  // 開啟紀錄：客戶頁（不含報價內容；未設定 USAGE_LOG_URL 時自動略過）
+  try { if (window.TQ_LOG) TQ_LOG.logOpen('client'); } catch (e) {}
 })();

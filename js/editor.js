@@ -207,9 +207,72 @@
     });
   }
 
+  /* ---------- 業務員姓名（使用紀錄用；不寫入報價資料、不顯示在報價圖／客戶頁） ---------- */
+  var USER_UNIT = '南恩通訊處'; // 單位：固定，不可修改
+  var USER_FIELDS = [{ id: 'userName', key: 'tq-user-name', label: '業務員姓名' }, { id: 'userTitle', key: 'tq-user-title', label: '職稱' }];
+  function userVal(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  function getUserName() { return userVal('userName'); }
+  function getUserTitle() { return userVal('userTitle'); }
+  function missingUserFields() {
+    return USER_FIELDS.filter(function (f) { return !userVal(f.id); });
+  }
+  function userBlockerMsg() {
+    var miss = missingUserFields();
+    return miss.length ? '⚠ 請先填寫最上方「' + miss.map(function (f) { return f.label; }).join('」「') + '」（內部使用紀錄用，不會出現在報價圖）' : '';
+  }
+  function updateUserWarning() {
+    var miss = missingUserFields(), w = document.getElementById('userWarn');
+    if (w) {
+      w.hidden = !miss.length;
+      w.textContent = miss.length ? '⚠ 必填：請輸入' + miss.map(function (f) { return f.label; }).join('、') + '（只需填一次，本機會記住）' : '';
+    }
+    USER_FIELDS.forEach(function (f) {
+      var el = document.getElementById(f.id); if (!el) return;
+      var bad = !el.value.trim();
+      el.classList.toggle('is-domestic', bad); el.setAttribute('aria-invalid', bad ? 'true' : 'false');
+    });
+  }
+  (function initUserFields() {
+    USER_FIELDS.forEach(function (f) {
+      var el = document.getElementById(f.id);
+      if (!el) return;
+      try { el.value = localStorage.getItem(f.key) || ''; } catch (e) {}
+      el.addEventListener('input', function () {
+        try {
+          var v = el.value.trim();
+          if (v) localStorage.setItem(f.key, v); else localStorage.removeItem(f.key);
+        } catch (e) {}
+        updateDomesticWarning();
+        checks();
+      });
+    });
+  })();
+  /** 下載成功後送使用紀錄（fire-and-forget） */
+  function logSummaryDownload(q) {
+    try {
+      if (!window.TQ_LOG || !TQ_LOG.enabled) return;
+      var ai = TQ.ageInfo(q.age);
+      TQ_LOG.logDownload({
+        unit: USER_UNIT, name: getUserName(), title: getUserTitle(), destination: q.destination || '', days: q.days || '',
+        startDate: q.startDate || '', endDate: q.endDate || '',
+        age: ai.valid ? ai.age : '', ageBand: ai.valid ? ai.label : '',
+        plans: (q.plans || []).map(function (p, i) {
+          var c = TQ.computePlan(p, q);
+          return { name: p.name || ('方案' + (i + 1)),
+            life: c.lifePremiumMissing ? '未填' : c.life.premium, prop: c.prop.premium,
+            total: c.lifePremiumMissing ? '未完成' : c.premium };
+        })
+      });
+    } catch (e) {}
+  }
+
   /** 擋下產生報價的問題（國內目的地、日期未填／回程早於出發、年齡未填／無效、AT1 超過年齡上限、產險方案不符 DM 投保年齡） */
   function quoteBlockers() {
     var out = [];
+    if (missingUserFields().length) out.push(userBlockerMsg());
     if (isDomesticDest()) out.push(TQ.DOMESTIC_WARNING);
     var ds = dateState();
     if (ds.error) out.push(ds.error);
@@ -261,6 +324,7 @@
     var inp = form.querySelector('[data-k="destination"]');
     if (inp) { inp.classList.toggle('is-domestic', dom); inp.setAttribute('aria-invalid', dom ? 'true' : 'false'); }
     updateAgeWarning();
+    updateUserWarning();
     var bl = quoteBlockers();
     ['btnSummaryPng'].forEach(function (id) {
       var b = document.getElementById(id);
@@ -279,7 +343,8 @@
     updateDomesticWarning();
     alert(bl.join('\n'));
     var focusKey = isDomesticDest() ? 'destination' : (!TQ.ageInfo(Q.age).valid ? 'age' : null);
-    var inp = focusKey && form.querySelector('[data-k="' + focusKey + '"]');
+    var mUser = missingUserFields()[0];
+    var inp = mUser ? document.getElementById(mUser.id) : (focusKey && form.querySelector('[data-k="' + focusKey + '"]'));
     if (inp) inp.focus();
     return true;
   }
@@ -945,6 +1010,7 @@
     var clean = scrubForSave(Q);
     TQ_SUMMARY.downloadSummaryPng(clean).then(function (name) {
       toast('已下載 ' + name);
+      logSummaryDownload(clean);
     }).catch(function (err) {
       alert('產生總表圖失敗：' + (err && err.message ? err.message : err));
     }).finally(function () {
@@ -975,4 +1041,6 @@
   try { initial = TQ.decodeHash(location.hash); } catch (e) { alert('網址中的報價資料無法解析：' + e.message); }
   if (!initial) initial = readStoredDraft();
   load(initial || window.SAMPLE_QUOTE);
+  // 開啟紀錄（未設定 USAGE_LOG_URL 時自動略過）
+  try { if (window.TQ_LOG) TQ_LOG.logOpen('editor', { unit: USER_UNIT, name: getUserName(), title: getUserTitle() }); } catch (e) {}
 })();
