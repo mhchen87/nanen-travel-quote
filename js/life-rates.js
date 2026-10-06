@@ -19,9 +19,40 @@
 
   var ASIA14 = ['中國', '大陸', '香港', '澳門', '日本', '韓國', '南韓', '越南', '新加坡', '菲律賓', '印尼', '馬來西亞', '緬甸', '泰國', '寮國', '柬埔寨', '帛琉', '馬爾地夫', '亞洲14', '亞洲十四'];
 
+  /* 亞洲14國（DM 註4／GPTA「國外亞洲14國」）之主要城市／地區＋簡體／英文名。
+   * 日本、南韓城市取自 common.js REGION_200 的同國關鍵字；其餘國家補常見旅遊地。英文以單字邊界比對。 */
+  var ASIA14_PLACES = [
+    // 簡體／別名國名
+    '中国', '韩国', '泰国', '菲律宾', '马来西亚', '缅甸', '老挝', '寮國', '柬埔寨', '帕劳', '帛琉', '马尔代夫', '馬爾代夫', '印度尼西亞', '印度尼西亚', '星加坡',
+    // 日本（同 REGION_200）
+    '東京', '东京', '大阪', '京都', '北海道', '沖繩', '冲绳', '名古屋', '福岡', '福冈', '札幌', '神戶', '神戸', '橫濱', '横滨', '奈良',
+    // 南韓（同 REGION_200）
+    '南韩', '首爾', '首尔', '釜山', '濟州', '济州',
+    // 中國大陸（含港澳）
+    '北京', '上海', '廣州', '广州', '深圳', '廈門', '厦门', '杭州', '蘇州', '苏州', '南京', '成都', '重慶', '重庆', '西安',
+    '桂林', '昆明', '麗江', '丽江', '張家界', '张家界', '九寨溝', '九寨沟', '黃山', '黄山', '哈爾濱', '哈尔滨', '青島', '青岛',
+    '天津', '武漢', '武汉', '長沙', '长沙', '拉薩', '拉萨', '西藏', '澳门',
+    // 泰國
+    '曼谷', '清邁', '清迈', '普吉', '芭達雅', '芭提雅', '芭堤雅', '華欣', '华欣', '蘇美島', '苏梅岛', '甲米',
+    // 越南
+    '河內', '河内', '胡志明', '峴港', '岘港', '芽莊', '芽庄', '富國島', '富国岛', '下龍灣', '下龙湾', '會安', '会安',
+    // 新加坡
+    '聖淘沙', '圣淘沙',
+    // 菲律賓
+    '馬尼拉', '马尼拉', '宿霧', '宿务', '長灘島', '长滩岛', '薄荷島', '薄荷岛', '巴拉望', '愛妮島', '爱妮岛',
+    // 印尼
+    '峇里島', '峇厘島', '巴里島', '巴厘島', '巴厘岛', '雅加達', '雅加达', '民丹島', '民丹岛', '龍目島', '龙目岛',
+    // 馬來西亞
+    '吉隆坡', '檳城', '槟城', '沙巴', '亞庇', '亚庇', '蘭卡威', '兰卡威', '馬六甲', '马六甲',
+    // 緬甸／寮國／柬埔寨
+    '仰光', '蒲甘', '永珍', '萬象', '万象', '琅勃拉邦', '龍坡邦', '吳哥', '吴哥', '金邊', '金边', '暹粒'
+  ];
+  var ASIA14_EN = /\b(japan|tokyo|osaka|kyoto|hokkaido|okinawa|nagoya|fukuoka|sapporo|kobe|yokohama|nara|south korea|korea|seoul|busan|jeju|china|beijing|shanghai|guangzhou|shenzhen|xiamen|hong ?kong|macau|macao|vietnam|viet nam|hanoi|ho chi minh|saigon|da ?nang|nha trang|phu quoc|singapore|philippines|manila|cebu|boracay|bohol|palawan|indonesia|bali|jakarta|bintan|lombok|malaysia|kuala lumpur|penang|sabah|kota kinabalu|langkawi|malacca|melaka|myanmar|burma|yangon|bagan|thailand|bangkok|chiang mai|phuket|pattaya|krabi|koh samui|laos|vientiane|luang prabang|cambodia|phnom penh|siem reap|angkor|palau|maldives)\b/i;
   function guessLifeRegion(destination) {
     var d = String(destination || '');
     for (var i = 0; i < ASIA14.length; i++) if (d.indexOf(ASIA14[i]) >= 0) return 'asia14';
+    for (var j = 0; j < ASIA14_PLACES.length; j++) if (d.indexOf(ASIA14_PLACES[j]) >= 0) return 'asia14';
+    if (ASIA14_EN.test(d)) return 'asia14';
     return 'other';
   }
 
@@ -138,6 +169,7 @@
     guessLifeRegion: guessLifeRegion,
     lookupLifePremium: lookupLifePremium,
     listKnownCombos: listKnownCombos,
-    ASIA14: ASIA14
+    ASIA14: ASIA14,
+    ASIA14_PLACES: ASIA14_PLACES
   };
 })(window);
