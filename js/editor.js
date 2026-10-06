@@ -1,4 +1,4 @@
-/* 報價編輯器：填寫 → 即時預覽 → 產生分享連結（資料編碼在網址 # 後）／下載 JSON
+/* 報價編輯器：填寫 → 即時預覽 → 下載三方案總表圖（草稿自動存在瀏覽器）
  * 產險保費：新快樂旅綜+ DM（天數 2～10）自動帶入；人壽保費：life-rates.js 精確相符才自動帶入。
  */
 (function () {
@@ -252,7 +252,7 @@
     if (hint) { hint.textContent = note; hint.className = note ? 'age-note' : 'hint'; }
     if (inp) { inp.classList.toggle('is-domestic', !ai.valid); inp.setAttribute('aria-invalid', ai.valid ? 'false' : 'true'); }
   }
-  /** 顯示／隱藏目的地紅字警告與年齡提示，並鎖定「產生分享連結」「下載總表圖」 */
+  /** 顯示／隱藏目的地紅字警告與年齡提示，並鎖定「下載三方案總表圖」 */
   function updateDomesticWarning() {
     var dom = isDomesticDest();
     var w = document.getElementById('destWarn');
@@ -261,7 +261,7 @@
     if (inp) { inp.classList.toggle('is-domestic', dom); inp.setAttribute('aria-invalid', dom ? 'true' : 'false'); }
     updateAgeWarning();
     var bl = quoteBlockers();
-    ['btnShare', 'btnSummaryPng'].forEach(function (id) {
+    ['btnSummaryPng'].forEach(function (id) {
       var b = document.getElementById(id);
       if (!b) return;
       b.classList.toggle('is-blocked', bl.length > 0);
@@ -271,12 +271,11 @@
     if (dom) setSchengenHint(false);
     return dom;
   }
-  /** 有任何擋報價問題時擋下產生連結／總表圖；回傳 true 表示已擋 */
+  /** 有任何擋報價問題時擋下下載總表圖；回傳 true 表示已擋 */
   function blockIfDomestic() {
     var bl = quoteBlockers();
     if (!bl.length) return false;
     updateDomesticWarning();
-    document.getElementById('sharePanel').hidden = true;
     alert(bl.join('\n'));
     var focusKey = isDomesticDest() ? 'destination' : (!TQ.ageInfo(Q.age).valid ? 'age' : null);
     var inp = focusKey && form.querySelector('[data-k="' + focusKey + '"]');
@@ -786,7 +785,7 @@
     function add(cls, msg) { out.push('<li class="' + cls + '">' + esc(msg) + '</li>'); }
     if (Q.sample) add('err', '目前標示為「範例資料」— 傳給客戶前請取消勾選並確認所有金額。');
     if (!Q.destination) add('warn', '尚未填寫目的地。');
-    quoteBlockers().forEach(function (m) { add('err', m + '（目前無法產生分享連結／總表圖）'); });
+    quoteBlockers().forEach(function (m) { add('err', m + '（目前無法下載三方案總表圖）'); });
     var aiC = TQ.ageInfo(Q.age);
     if (aiC.valid && !aiC.child && !aiC.lifeRates && Q.plans.some(function (p) { return p.life && p.life.enabled; })) {
       add('warn', aiC.label + '：人壽保費需另行試算（GPTA），請於各方案「進階」手填人壽保費；AT1 上限 ' + aiC.at1Max + ' 萬。');
@@ -844,7 +843,6 @@
         localStorage.removeItem(STORE_KEY_LEGACY);
       } catch (e) {}
     }, 300);
-    document.getElementById('sharePanel').hidden = true;
   }
 
   function load(q) {
@@ -956,31 +954,6 @@
     });
   });
 
-  document.getElementById('btnShare').addEventListener('click', function () {
-    if (blockIfDomestic()) return;
-    var clean = scrubForSave(Q);
-    var url = TQ.shareUrl(clean);
-    var panel = document.getElementById('sharePanel');
-    document.getElementById('shareUrl').value = url;
-    document.getElementById('btnOpen').href = url;
-    var meta = '連結長度 ' + url.length + ' 字元。';
-    if (/^file:/.test(url)) meta += ' <span class="warn">目前是本機檔案路徑（file://），客戶打不開；請先把網站放到靜態主機，再從該網址開啟編輯器產生連結。</span>';
-    if (url.length > 4500) meta += ' <span class="warn">連結偏長，LINE 單則訊息上限約 5,000 字。</span>';
-    if (Q.sample) meta += ' <span class="warn">此報價仍標示為「範例」。</span>';
-    document.getElementById('shareMeta').innerHTML = meta;
-    panel.hidden = false;
-    try {
-      var back = TQ.decodeHash(url.slice(url.indexOf('#')));
-      if (JSON.stringify(back) !== JSON.stringify(clean)) throw new Error('mismatch');
-    } catch (err) { document.getElementById('shareMeta').innerHTML += ' <span class="warn">連結驗證失敗：' + esc(err.message) + '</span>'; }
-  });
-  document.getElementById('btnCopy').addEventListener('click', function () {
-    var ta = document.getElementById('shareUrl');
-    var txt = ta.value;
-    (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject())
-      .then(function () { toast('已複製連結'); })
-      .catch(function () { ta.select(); document.execCommand('copy'); toast('已複製連結'); });
-  });
   document.getElementById('btnSample').addEventListener('click', function () {
     if (confirm('載入範例資料會覆蓋目前內容，確定？')) { load(window.SAMPLE_QUOTE); toast('已載入範例（已標示為範例）'); }
   });

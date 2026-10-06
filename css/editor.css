@@ -19,12 +19,6 @@
 .btn-sm { font-size: 13px; padding: 4px 8px; border-radius: 8px; }
 .btn-danger { color: var(--danger); }
 
-.ed-share { background: #fffaf0; border-bottom: 1px solid #efe0bd; padding: 10px 16px; }
-.share-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.share-row textarea { flex: 1 1 360px; font: 13px/1.4 ui-monospace, monospace; padding: 8px; border-radius: 8px; border: 1px solid #d9c690; word-break: break-all; }
-.share-btns { display: flex; gap: 6px; align-items: flex-start; }
-.share-meta { font-size: 13px; color: var(--muted); margin-top: 6px; }
-.share-meta .warn { color: var(--danger); font-weight: 700; }
 
 .ed-layout { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px; max-width: 1600px; margin: 0 auto; }
 @media (min-width: 1100px) {
