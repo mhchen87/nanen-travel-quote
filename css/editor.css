@@ -197,3 +197,7 @@ input::placeholder { color: #8b97a5; }
 .dest-warn[hidden] { display: none; }
 input.is-domestic { border-color: #c62828 !important; box-shadow: 0 0 0 2px rgba(198, 40, 40, .18); background: #fff7f7; }
 .btn.is-blocked { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
+
+/* 年齡提示／超限選項 */
+.dest-warn.soft { background: #fff4e5; border-color: #f0c27a; color: #9a5b00; }
+.age-note { display: block; margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #eef6ff; color: #173c66; font-size: 12.5px; }

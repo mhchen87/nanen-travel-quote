@@ -160,3 +160,6 @@ body {
   background: #c9a45c; color: #0f2a4a; font-size: 13px; font-weight: 800; letter-spacing: .04em;
   vertical-align: middle;
 }
+
+/* 未滿15足歲：主框顯示兒童主約 MRC */
+.death-box.child .death-val { font-size: 30px; }

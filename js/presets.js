@@ -2,7 +2,8 @@
 window.PROPERTY_PRESETS = {
  "meta": {
   "source": "富邦產險 新快樂旅綜+（海外逍遙醫療升級版）115.04版 DM",
-  "note": "保費僅 DM 費率表 2~10 天；其他天數請向產險試算"
+  "note": "保費僅 DM 費率表 2~10 天；其他天數請向產險試算",
+  "ageNote": "※針對未滿15足歲之被保險人，本保險契約無提供意外死亡之喪葬費用保險金。"
  },
  "plans": [
   {
@@ -10,6 +11,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 一般200萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "15足~79歲",
+   "ageMin": 15,
+   "ageMax": 79,
+   "child": false,
    "deathWan": 200,
    "hospitalWan": 20,
    "accidentMedicalWan": 20,
@@ -108,6 +112,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 一般300萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "15足~79歲",
+   "ageMin": 15,
+   "ageMax": 79,
+   "child": false,
    "deathWan": 300,
    "hospitalWan": 30,
    "accidentMedicalWan": 30,
@@ -206,6 +213,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 一般500萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "15足~74歲",
+   "ageMin": 15,
+   "ageMax": 74,
+   "child": false,
    "deathWan": 500,
    "hospitalWan": 50,
    "accidentMedicalWan": 50,
@@ -304,6 +314,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 一般1000萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1000,
    "hospitalWan": 100,
    "accidentMedicalWan": 100,
@@ -402,6 +415,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 租車500萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "18~74歲",
+   "ageMin": 18,
+   "ageMax": 74,
+   "child": false,
    "deathWan": 500,
    "hospitalWan": 50,
    "accidentMedicalWan": 50,
@@ -504,6 +520,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫一 租車1000萬",
    "planName": "計畫一(國外旅遊適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1000,
    "hospitalWan": 100,
    "accidentMedicalWan": 100,
@@ -606,6 +625,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 一般200萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "15足~79歲",
+   "ageMin": 15,
+   "ageMax": 79,
+   "child": false,
    "deathWan": 200,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -704,6 +726,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 一般300萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "15足~79歲",
+   "ageMin": 15,
+   "ageMax": 79,
+   "child": false,
    "deathWan": 300,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -802,6 +827,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 一般500萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "15足~74歲",
+   "ageMin": 15,
+   "ageMax": 74,
+   "child": false,
    "deathWan": 500,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -900,6 +928,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 一般1000萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1000,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -998,6 +1029,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 一般1500萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1500,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -1096,6 +1130,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 租車500萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "18~74歲",
+   "ageMin": 18,
+   "ageMax": 74,
+   "child": false,
    "deathWan": 500,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -1198,6 +1235,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 租車1000萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1000,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -1300,6 +1340,9 @@ window.PROPERTY_PRESETS = {
    "label": "新快樂旅綜+ 計畫二 租車1500萬",
    "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
    "ageLabel": "18~69歲",
+   "ageMin": 18,
+   "ageMax": 69,
+   "child": false,
    "deathWan": 1500,
    "hospitalWan": 150,
    "accidentMedicalWan": 150,
@@ -1395,6 +1438,164 @@ window.PROPERTY_PRESETS = {
     "8": 3054,
     "9": 3169,
     "10": 3275
+   }
+  },
+  {
+   "code": "P1-CHILD",
+   "label": "新快樂旅綜+ 計畫一 兒童國外（未滿15足歲・無身故失能）",
+   "planName": "計畫一(國外旅遊適用)",
+   "ageLabel": "未滿15足歲",
+   "ageMin": 0,
+   "ageMax": 14,
+   "child": true,
+   "deathWan": null,
+   "hospitalWan": 30,
+   "accidentMedicalWan": 30,
+   "outpatientYuan": 6000,
+   "erYuan": 15000,
+   "inconvenience": [
+    {
+     "name": "旅程取消",
+     "amount": "最高5萬（實支實付）"
+    },
+    {
+     "name": "旅程更改",
+     "amount": "最高5萬（實支實付）"
+    },
+    {
+     "name": "班機延誤（4小時以上）",
+     "amount": "每4小時3,000元，每次最高6,000元，保期內限2次"
+    },
+    {
+     "name": "行李延誤（6小時以上）",
+     "amount": "3,000元/次，保期內限2次"
+    },
+    {
+     "name": "行李損失",
+     "amount": "3,000元/次，保期內限2次"
+    },
+    {
+     "name": "旅行文件損失",
+     "amount": "3,000元/次，保期內限2次"
+    }
+   ],
+   "others": [
+    {
+     "name": "個人責任（自負額2,500元）",
+     "amount": "100萬"
+    },
+    {
+     "name": "緊急救援費用",
+     "amount": "150萬"
+    },
+    {
+     "name": "水陸公共交通工具延誤",
+     "amount": "1,000元，保期內限2次"
+    },
+    {
+     "name": "特定票券取消",
+     "amount": "1,000元，保期內限1次"
+    },
+    {
+     "name": "食品中毒",
+     "amount": "5,000元/次"
+    },
+    {
+     "name": "國際SOS海外緊急救援（贈送）",
+     "amount": "每次事故上限3萬美元"
+    }
+   ],
+   "premiumByDays": {
+    "2": 326,
+    "3": 350,
+    "4": 413,
+    "5": 476,
+    "6": 507,
+    "7": 539,
+    "8": 560,
+    "9": 585,
+    "10": 608
+   }
+  },
+  {
+   "code": "P2-CHILD",
+   "label": "新快樂旅綜+ 計畫二 兒童醫療加值（未滿15足歲・無身故失能）",
+   "planName": "計畫二(國外旅遊醫療加值型或申根適用)",
+   "ageLabel": "未滿15足歲",
+   "ageMin": 0,
+   "ageMax": 14,
+   "child": true,
+   "deathWan": null,
+   "hospitalWan": 150,
+   "accidentMedicalWan": 150,
+   "outpatientYuan": 30000,
+   "erYuan": 75000,
+   "inconvenience": [
+    {
+     "name": "旅程取消",
+     "amount": "最高6萬（實支實付）"
+    },
+    {
+     "name": "旅程更改",
+     "amount": "最高6萬（實支實付）"
+    },
+    {
+     "name": "班機延誤（4小時以上）",
+     "amount": "每4小時5,000元，每次最高10,000元，保期內限2次"
+    },
+    {
+     "name": "行李延誤（6小時以上）",
+     "amount": "6,000元/次，保期內限2次"
+    },
+    {
+     "name": "行李損失",
+     "amount": "6,000元/次，保期內限2次"
+    },
+    {
+     "name": "旅行文件損失",
+     "amount": "3,000元/次，保期內限2次"
+    }
+   ],
+   "others": [
+    {
+     "name": "個人責任（自負額2,500元）",
+     "amount": "100萬"
+    },
+    {
+     "name": "緊急救援費用",
+     "amount": "300萬"
+    },
+    {
+     "name": "改降非原定機場",
+     "amount": "5,000元/次，保期內限2次"
+    },
+    {
+     "name": "水陸公共交通工具延誤",
+     "amount": "3,000元，保期內限2次"
+    },
+    {
+     "name": "特定票券取消",
+     "amount": "3,000元，保期內限1次"
+    },
+    {
+     "name": "食品中毒",
+     "amount": "6,000元/次"
+    },
+    {
+     "name": "國際SOS海外緊急救援（贈送）",
+     "amount": "每次事故上限6萬美元"
+    }
+   ],
+   "premiumByDays": {
+    "2": 1027,
+    "3": 1116,
+    "4": 1362,
+    "5": 1612,
+    "6": 1729,
+    "7": 1851,
+    "8": 1918,
+    "9": 1990,
+    "10": 2056
    }
   }
  ]

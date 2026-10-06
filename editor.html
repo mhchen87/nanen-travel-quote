@@ -9,8 +9,8 @@
 <meta http-equiv="Expires" content="0">
 <title>旅平險三方案 報價編輯器（內部使用）</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="css/style.css?v=20261006110957">
-<link rel="stylesheet" href="css/editor.css?v=20261006110957">
+<link rel="stylesheet" href="css/style.css?v=20261006112911">
+<link rel="stylesheet" href="css/editor.css?v=20261006112911">
 </head>
 <body class="editor-body">
 <header class="ed-top">
@@ -43,6 +43,7 @@
       <h2>行程資料 <small>（頁首只顯示：目的地、天數、日期；不顯示年齡）</small></h2>
       <div class="grid g2">
         <label>目的地<input type="text" data-k="destination" placeholder="例：日本／法國（申根）" aria-describedby="destWarn"><span class="dest-warn" id="destWarn" role="alert" hidden></span></label>
+        <label>被保險人年齡（足歲・必填）<input type="number" min="0" max="100" step="1" data-k="age" inputmode="numeric" placeholder="例：35（不會顯示在客戶頁）" aria-describedby="ageWarn ageHint"><span class="dest-warn" id="ageWarn" role="alert" hidden></span><span class="hint" id="ageHint"></span></label>
         <label>天數<input type="number" min="1" data-k="days" inputmode="numeric"><span class="hint" id="daysHint"></span></label>
         <label>出發日<input type="date" data-k="startDate"></label>
         <label>回程日<input type="date" data-k="endDate"></label>
@@ -69,14 +70,15 @@
             </select>
             <span class="hint">申根勾選時會自動改為「國外其他」</span>
           </label>
-          <label>年齡區間（查表用・客戶頁不顯示）
-            <select data-k="ageBand">
+          <label>年齡區間（依上方年齡自動・客戶頁不顯示）
+            <select data-k="ageBand" disabled>
               <option value="18-65">18足歲～65歲</option>
-              <option value="15-17">15～17歲</option>
+              <option value="15-17">15足歲～17歲</option>
               <option value="66-70">66～70歲</option>
               <option value="71-75">71～75歲</option>
               <option value="76-80">76～80歲</option>
-              <option value="under15">未滿15歲</option>
+              <option value="81-100">81～100歲</option>
+              <option value="under15">未滿15足歲</option>
             </select>
           </label>
         </div>
@@ -109,7 +111,7 @@
     </section>
 
     <section class="ed-card checks" id="checks"></section>
-  <p class="build-ver" id="buildVersion">版本 115/10/06 11:09</p>
+  <p class="build-ver" id="buildVersion">版本 115/10/06 11:29</p>
   </form>
 
   <aside class="ed-preview">
@@ -124,13 +126,13 @@
   </aside>
 </div>
 
-<script src="js/vendor/pako.min.js?v=20261006110957"></script>
-<script src="js/vendor/html2canvas.min.js?v=20261006110957"></script>
-<script src="js/common.js?v=20261006110957"></script>
-<script src="js/sample-data.js?v=20261006110957"></script>
-<script src="js/presets.js?v=20261006110957"></script>
-<script src="js/life-rates.js?v=20261006110957"></script>
-<script src="js/summary-export.js?v=20261006110957"></script>
-<script src="js/editor.js?v=20261006110957"></script>
+<script src="js/vendor/pako.min.js?v=20261006112911"></script>
+<script src="js/vendor/html2canvas.min.js?v=20261006112911"></script>
+<script src="js/common.js?v=20261006112911"></script>
+<script src="js/sample-data.js?v=20261006112911"></script>
+<script src="js/presets.js?v=20261006112911"></script>
+<script src="js/life-rates.js?v=20261006112911"></script>
+<script src="js/summary-export.js?v=20261006112911"></script>
+<script src="js/editor.js?v=20261006112911"></script>
 </body>
 </html>

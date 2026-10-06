@@ -27,20 +27,25 @@
       if (plan.recommended) h += '<span class="sum-badge">推薦</span>';
       h += '</div>';
       h += '<div class="sum-tag">' + TQ.esc(plan.tagline || '') + '</div>';
-      h += '<div class="sum-death"><div class="lab">意外身故・失能</div><div class="val">' + TQ.esc(TQ.fmtYuan(c.death)) + '</div>';
-      h += '<div class="br">' + TQ.esc(on ? ('人壽 ' + TQ.fmtShort(L.at1) + '＋產險 ' + TQ.fmtShort(P.death)) : ('產險 ' + TQ.fmtShort(P.death))) + '</div></div>';
+      if (c.child) {
+        h += '<div class="sum-death"><div class="lab">' + (on ? '人壽兒童主約 MRC' : '意外身故・失能') + '</div><div class="val">' + (on ? TQ.esc(TQ.fmtYuan(L.mrc)) : '—') + '</div>';
+        h += '<div class="br">' + TQ.esc(on ? '兒童傷害醫療旅平險（未滿15足歲無 AT1）' : '未滿15足歲：產險兒童方案無身故・失能') + '</div></div>';
+      } else {
+        h += '<div class="sum-death"><div class="lab">意外身故・失能</div><div class="val">' + TQ.esc(TQ.fmtYuan(c.death)) + '</div>';
+        h += '<div class="br">' + TQ.esc(on ? ('人壽 ' + TQ.fmtShort(L.at1) + '＋產險 ' + TQ.fmtShort(P.death)) : ('產險 ' + TQ.fmtShort(P.death))) + '</div></div>';
+      }
       h += '<ul class="sum-cov">';
       function covLi(label, total, br) {
         return '<li><span>' + TQ.esc(label) + '</span><span class="sum-amtcol"><b>' + TQ.esc(total) + '</b><small class="sum-br">' + TQ.esc(br) + '</small></span></li>';
       }
       h += covLi('海外突發 住院', TQ.fmtYuan(c.hospital),
-        on ? ('（人壽 ' + TQ.fmtShort(L.hospital) + '＋產險 ' + TQ.fmtShort(P.hospital) + '）') : ('（產險 ' + TQ.fmtShort(P.hospital) + '）'));
+        on ? ('（人壽 ' + (L.child ? 'OH1 ' : '') + TQ.fmtShort(L.hospital) + '＋產險 ' + TQ.fmtShort(P.hospital) + '）') : ('（產險 ' + TQ.fmtShort(P.hospital) + '）'));
       h += covLi('海外突發 門診', TQ.fmtYuan(c.outpatient),
         on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.outpatient) + '＋產險 ' + TQ.fmtShort(P.outpatient) + '）') : ('（產險 ' + TQ.fmtShort(P.outpatient) + '）'));
       h += covLi('海外突發 急診', TQ.fmtYuan(c.er),
         on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.er) + '＋產險 ' + TQ.fmtShort(P.er) + '）') : ('（產險 ' + TQ.fmtShort(P.er) + '）'));
       h += covLi('意外醫療', TQ.fmtYuan(c.accidentMedical),
-        on ? ('（人壽 ' + TQ.fmtShort(L.mr) + '＋產險 ' + TQ.fmtShort(P.accidentMedical) + '）') : ('（產險 ' + TQ.fmtShort(P.accidentMedical) + '）'));
+        on ? ('（人壽 ' + (L.child ? 'MRC ' + TQ.fmtShort(L.mrc) : TQ.fmtShort(L.mr)) + '＋產險 ' + TQ.fmtShort(P.accidentMedical) + '）') : ('（產險 ' + TQ.fmtShort(P.accidentMedical) + '）'));
       h += '</ul>';
       // 不便險精簡：前 4 項 + 其餘數
       var items = (plan.inconvenience || []).slice(0, 4);
@@ -53,8 +58,10 @@
         if (more > 0) h += '<li class="more">…另有 ' + more + ' 項不便險／詳見完整報價</li>';
         h += '</ul>';
       }
-      h += '<div class="sum-prem">壽 ' + TQ.comma(L.premium) + ' ＋ 產 ' + TQ.comma(P.premium) +
-        ' ＝ <b>' + TQ.comma(c.premium) + '</b> 元</div>';
+      h += c.lifePremiumMissing
+        ? '<div class="sum-prem">壽 需另行試算 ＋ 產 ' + TQ.comma(P.premium) + '（人壽另計）</div>'
+        : '<div class="sum-prem">壽 ' + TQ.comma(L.premium) + ' ＋ 產 ' + TQ.comma(P.premium) +
+          ' ＝ <b>' + TQ.comma(c.premium) + '</b> 元</div>';
       h += '</section>';
     });
     h += '</div>';
