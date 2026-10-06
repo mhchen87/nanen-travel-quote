@@ -191,3 +191,9 @@ input::placeholder { color: #8b97a5; }
   text-align: center;
   letter-spacing: 0.02em;
 }
+
+/* 國內地點警告（台灣／金門／馬祖／澎湖…不適用海外旅平險） */
+.dest-warn { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: #fdecec; border: 1px solid #e0a3a3; color: #c62828; font-size: 13px; font-weight: 700; line-height: 1.5; }
+.dest-warn[hidden] { display: none; }
+input.is-domestic { border-color: #c62828 !important; box-shadow: 0 0 0 2px rgba(198, 40, 40, .18); background: #fff7f7; }
+.btn.is-blocked { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }

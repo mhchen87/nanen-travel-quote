@@ -575,6 +575,40 @@
     return true;
   }
 
+  /**
+   * 台灣國內地點偵測（國內旅遊不適用海外旅平險）。
+   * 只比對完整地名（不比對單字「台」），英文用單字邊界（避免 Matsu 誤中日本 Matsumoto／Matsuyama）。
+   * 先排除已知外國同名詞：東京「台東區」、舊金山「金門大橋／金門公園」。
+   * 回傳命中的關鍵字（字串），沒命中回傳 ''。
+   */
+  var DOMESTIC_WARNING = '⚠ 台灣／金門／馬祖／澎湖等屬國內旅遊，不適用海外旅平險，請輸入正確的出國目的地國家';
+  var DOMESTIC_ZH = [
+    // 國名
+    '台灣', '臺灣', '台湾', '臺湾', '中華民國', '中华民国',
+    // 離島
+    '金門', '金门', '馬祖', '马祖', '澎湖', '綠島', '绿岛', '蘭嶼', '兰屿', '小琉球',
+    '連江', '连江', '東引', '东引', '南竿', '北竿',
+    // 縣市（繁＋簡）
+    '台北', '臺北', '新北', '桃園', '桃园', '台中', '臺中', '台南', '臺南', '高雄', '基隆',
+    '新竹', '苗栗', '彰化', '南投', '雲林', '云林', '嘉義', '嘉义', '屏東', '屏东',
+    '宜蘭', '宜兰', '花蓮', '花莲', '台東', '臺東', '台东'
+  ];
+  var DOMESTIC_EN = /\b(taiwan|taipei|new taipei|kaohsiung|taichung|tainan|taoyuan|keelung|hsinchu|miaoli|changhua|nantou|yunlin|chiayi|pingtung|yilan|hualien|taitung|kinmen|matsu|penghu|lienchiang)\b/i;
+  // 外國同名詞：先移除再比對
+  var DOMESTIC_EXCLUDE = [
+    '台東區', '台东区', '台東区', '臺東區',           // 東京都台東區（淺草／上野）
+    '金門大橋', '金门大桥', '金門大桥', '金門橋', '金门桥', '金門公園', '金门公园' // 舊金山 Golden Gate
+  ];
+  function detectDomestic(dest) {
+    var t = String(dest || '').trim();
+    if (!t) return '';
+    for (var e = 0; e < DOMESTIC_EXCLUDE.length; e++) t = t.split(DOMESTIC_EXCLUDE[e]).join(' ');
+    t = t.replace(/golden\s+gate/ig, ' ');
+    for (var i = 0; i < DOMESTIC_ZH.length; i++) if (t.indexOf(DOMESTIC_ZH[i]) >= 0) return DOMESTIC_ZH[i];
+    var m = DOMESTIC_EN.exec(t);
+    return m ? m[1] : '';
+  }
+
   global.TQ = {
     LIFE_PRODUCT: LIFE_PRODUCT, PROPERTY_PRODUCT: PROPERTY_PRODUCT,
     LIFE_OH1_RATIO: LIFE_OH1_RATIO, PROP_RATIO: PROP_RATIO, REGION_OPTIONS: REGION_OPTIONS,
@@ -584,6 +618,7 @@
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
     findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
     detectSchengen: detectSchengen,
+    detectDomestic: detectDomestic, DOMESTIC_WARNING: DOMESTIC_WARNING,
     renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
   };
 })(window);

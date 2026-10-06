@@ -116,13 +116,14 @@
       }
     });
     q.agent = q.agent || { unit: '南恩通訊處', name: '陳銘旭', title: '業務經理', manager: '林秋慧', managerTitle: '處經理' };
-    if (!q.lifeRegionPct) q.lifeRegionPct = TQ.guessRegionPct(q.destination);
+    var domesticDest = !!TQ.detectDomestic(q.destination);
+    if (!q.lifeRegionPct) q.lifeRegionPct = domesticDest ? 100 : TQ.guessRegionPct(q.destination);
     if (!q.dateFormat) q.dateFormat = 'roc';
     if (!q.lifeRateType) q.lifeRateType = 'agency';
     if (!q.ageBand) q.ageBand = '18-65';
     if (typeof q.schengen !== 'boolean') q.schengen = false;
     if (!q.lifeRegion) {
-      q.lifeRegion = q.schengen ? 'other' : ((window.LIFE_RATES && LIFE_RATES.guessLifeRegion(q.destination)) || 'asia14');
+      q.lifeRegion = q.schengen ? 'other' : (domesticDest ? 'asia14' : ((window.LIFE_RATES && LIFE_RATES.guessLifeRegion(q.destination)) || 'asia14'));
     }
     // 方案一／二預設含人壽；方案三不含
     q.plans.forEach(function (p, idx) {
@@ -157,9 +158,41 @@
       el.hidden = true;
     }
   }
+  /* ---------- 國內地點（台灣／金門／馬祖／澎湖…）→ 警告＋擋報價 ---------- */
+  function isDomesticDest() { return !!TQ.detectDomestic(Q && Q.destination); }
+  /** 顯示／隱藏目的地紅字警告，並鎖定「產生分享連結」「下載總表圖」 */
+  function updateDomesticWarning() {
+    var dom = isDomesticDest();
+    var w = document.getElementById('destWarn');
+    if (w) { w.hidden = !dom; w.textContent = dom ? TQ.DOMESTIC_WARNING : ''; }
+    var inp = form.querySelector('[data-k="destination"]');
+    if (inp) { inp.classList.toggle('is-domestic', dom); inp.setAttribute('aria-invalid', dom ? 'true' : 'false'); }
+    ['btnShare', 'btnSummaryPng'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (!b) return;
+      b.classList.toggle('is-blocked', dom);
+      b.setAttribute('aria-disabled', dom ? 'true' : 'false');
+      if (dom) b.title = TQ.DOMESTIC_WARNING; else b.removeAttribute('title');
+    });
+    if (dom) setSchengenHint(false);
+    return dom;
+  }
+  /** 國內目的地時擋下產生報價；回傳 true 表示已擋 */
+  function blockIfDomestic() {
+    if (!isDomesticDest()) return false;
+    updateDomesticWarning();
+    document.getElementById('sharePanel').hidden = true;
+    alert(TQ.DOMESTIC_WARNING);
+    var inp = form.querySelector('[data-k="destination"]');
+    if (inp) inp.focus();
+    return true;
+  }
+
   /** 依目的地自動勾／取消申根；手動覆寫期間不改 */
   function syncSchengenFromDestination() {
     if (schengenManual) { setSchengenHint(false); return false; }
+    // 國內地點：不依此文字自動分類（申根／地區）
+    if (isDomesticDest()) { setSchengenHint(false); return false; }
     var want = TQ.detectSchengen(Q.destination);
     var cb = form.querySelector('[data-k="schengen"]');
     if (want === !!Q.schengen) {
@@ -516,7 +549,11 @@
       var d = TQ.daysInclusive(Q.startDate, Q.endDate);
       if (d && d > 0) { Q.days = d; var di = form.querySelector('[data-k="days"]'); if (di) di.value = d; }
     }
-    if (k === 'destination') {
+    if (k === 'destination' && isDomesticDest()) {
+      // 國內地點（台灣／金門／馬祖／澎湖…）：顯示警告，不依此文字自動判斷申根／地區
+      schengenManual = false;
+      updateDomesticWarning();
+    } else if (k === 'destination') {
       // 目的地變更 → 重新依地名自動申根（取消先前手動覆寫）
       schengenManual = false;
       syncSchengenFromDestination();
@@ -606,7 +643,9 @@
     var dh = document.getElementById('daysHint');
     var d = TQ.daysInclusive(Q.startDate, Q.endDate);
     dh.textContent = d ? ('依日期計算：' + d + ' 天（算頭算尾，出發日與回程日都算）') : '請填出發日與回程日（天數＝算頭算尾）';
-    document.getElementById('regionHint').textContent = '依目的地自動判斷，可手動調整（Go安行 DM 註3）';
+    document.getElementById('regionHint').textContent = isDomesticDest()
+      ? '目的地為台灣國內地點，暫不自動判斷地區；請改填出國目的地'
+      : '依目的地自動判斷，可手動調整（Go安行 DM 註3）';
   }
 
   function checks() {
@@ -614,6 +653,7 @@
     function add(cls, msg) { out.push('<li class="' + cls + '">' + esc(msg) + '</li>'); }
     if (Q.sample) add('err', '目前標示為「範例資料」— 傳給客戶前請取消勾選並確認所有金額。');
     if (!Q.destination) add('warn', '尚未填寫目的地。');
+    else if (isDomesticDest()) add('err', TQ.DOMESTIC_WARNING + '（目前無法產生分享連結／總表圖）');
     if (!Q.startDate || !Q.endDate) add('warn', '尚未填寫出發／回程日期。');
     var d = TQ.daysInclusive(Q.startDate, Q.endDate);
     if (d && Q.days && d !== Number(Q.days)) add('warn', '天數（' + Q.days + '）與日期計算（' + d + ' 天）不同，請確認。');
@@ -655,6 +695,7 @@
 
   var saveTimer;
   function update() {
+    updateDomesticWarning();
     refreshDerived();
     TQ.renderQuote(scrubForSave(Q), preview);
     checks();
@@ -763,6 +804,7 @@
 
 
   document.getElementById('btnSummaryPng').addEventListener('click', function () {
+    if (blockIfDomestic()) return;
     var btn = document.getElementById('btnSummaryPng');
     btn.disabled = true; btn.textContent = '產生中…';
     var clean = scrubForSave(Q);
@@ -776,6 +818,7 @@
   });
 
   document.getElementById('btnShare').addEventListener('click', function () {
+    if (blockIfDomestic()) return;
     var clean = scrubForSave(Q);
     var url = TQ.shareUrl(clean);
     var panel = document.getElementById('sharePanel');
