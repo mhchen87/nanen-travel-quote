@@ -22,7 +22,7 @@
     h += '<div class="sum-plans">';
     (quote.plans || []).forEach(function (plan, idx) {
       var c = TQ.computePlan(plan, quote);
-      var L = c.life, P = c.prop, on = L.enabled;
+      var L = c.life, P = c.prop, on = L.enabled, pOn = P.enabled;
       h += '<section class="sum-card' + (plan.recommended ? ' reco' : '') + '">';
       h += '<div class="sum-card-h"><span class="sum-name">' + TQ.esc(plan.name || ('方案' + (idx + 1))) + '</span>';
       if (plan.recommended) h += '<span class="sum-badge">推薦</span>';
@@ -33,23 +33,21 @@
         h += '<div class="br">' + TQ.esc(on ? '兒童傷害醫療旅平險（未滿15足歲無 AT1）' : '未滿15足歲：產險兒童方案無身故・失能') + '</div></div>';
       } else {
         h += '<div class="sum-death"><div class="lab">意外身故・失能</div><div class="val">' + TQ.esc(TQ.fmtYuan(c.death)) + '</div>';
-        h += '<div class="br">' + TQ.esc(on ? ('人壽 ' + TQ.fmtShort(L.at1) + '＋產險 ' + TQ.fmtShort(P.death)) : ('產險 ' + TQ.fmtShort(P.death))) + '</div></div>';
+        h += '<div class="br">' + TQ.esc(TQ.covSource(on, TQ.fmtShort(L.at1), pOn, TQ.fmtShort(P.death))) + '</div></div>';
       }
       h += '<ul class="sum-cov">';
-      function covLi(label, total, br) {
-        return '<li><span>' + TQ.esc(label) + '</span><span class="sum-amtcol"><b>' + TQ.esc(total) + '</b><small class="sum-br">' + TQ.esc(br) + '</small></span></li>';
+      function covLi(label, total, lifeTxt, propTxt) {
+        if (!total) return ''; // 兩邊都沒有此項保障 → 不顯示
+        var src = TQ.covSource(on, lifeTxt, pOn, propTxt);
+        return '<li><span>' + TQ.esc(label) + '</span><span class="sum-amtcol"><b>' + TQ.esc(TQ.fmtYuan(total)) + '</b><small class="sum-br">' + TQ.esc(src ? '（' + src + '）' : '') + '</small></span></li>';
       }
-      h += covLi('海外突發 住院', TQ.fmtYuan(c.hospital),
-        on ? ('（人壽 ' + (L.child ? 'OH1 ' : '') + TQ.fmtShort(L.hospital) + '＋產險 ' + TQ.fmtShort(P.hospital) + '）') : ('（產險 ' + TQ.fmtShort(P.hospital) + '）'));
-      h += covLi('海外突發 門診', TQ.fmtYuan(c.outpatient),
-        on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.outpatient) + '＋產險 ' + TQ.fmtShort(P.outpatient) + '）') : ('（產險 ' + TQ.fmtShort(P.outpatient) + '）'));
-      h += covLi('海外突發 急診', TQ.fmtYuan(c.er),
-        on ? ('（人壽 每日最高 ' + TQ.fmtShort(L.er) + '＋產險 ' + TQ.fmtShort(P.er) + '）') : ('（產險 ' + TQ.fmtShort(P.er) + '）'));
-      h += covLi('意外醫療', TQ.fmtYuan(c.accidentMedical),
-        on ? ('（人壽 ' + (L.child ? 'MRC ' + TQ.fmtShort(L.mrc) : TQ.fmtShort(L.mr)) + '＋產險 ' + TQ.fmtShort(P.accidentMedical) + '）') : ('（產險 ' + TQ.fmtShort(P.accidentMedical) + '）'));
+      h += covLi('海外突發 住院', c.hospital, (L.child ? 'OH1 ' : '') + TQ.fmtShort(L.hospital), TQ.fmtShort(P.hospital));
+      h += covLi('海外突發 門診', c.outpatient, '每日最高 ' + TQ.fmtShort(L.outpatient), TQ.fmtShort(P.outpatient));
+      h += covLi('海外突發 急診', c.er, '每日最高 ' + TQ.fmtShort(L.er), TQ.fmtShort(P.er));
+      h += covLi('意外醫療', c.accidentMedical, L.child ? 'MRC ' + TQ.fmtShort(L.mrc) : TQ.fmtShort(L.mr), TQ.fmtShort(P.accidentMedical));
       h += '</ul>';
-      // 不便險精簡：前 4 項 + 其餘數
-      var items = (plan.inconvenience || []).slice(0, 4);
+      // 不便險精簡：前 4 項 + 其餘數（產險不投保 → 不顯示）
+      var items = pOn ? (plan.inconvenience || []).slice(0, 4) : [];
       if (items.length) {
         h += '<div class="sum-sec">不便險</div><ul class="sum-items">';
         items.forEach(function (it) {
@@ -59,10 +57,10 @@
         if (more > 0) h += '<li class="more">…另有 ' + more + ' 項不便險／詳見完整報價</li>';
         h += '</ul>';
       }
-      h += c.lifePremiumMissing
-        ? '<div class="sum-prem">壽 ' + (c.lifeOverCap ? 'AT1 超過年齡上限' : '需另行試算') + ' ＋ 產 ' + TQ.comma(P.premium) + '（人壽另計）</div>'
-        : '<div class="sum-prem">壽 ' + TQ.comma(L.premium) + ' ＋ 產 ' + TQ.comma(P.premium) +
-          ' ＝ <b>' + TQ.comma(c.premium) + '</b> 元</div>';
+      var pp = TQ.premiumParts(c);
+      h += pp.missing
+        ? '<div class="sum-prem">壽 ' + pp.life + ' ＋ 產 ' + pp.prop + '（人壽另計）</div>'
+        : '<div class="sum-prem">壽 ' + pp.life + ' ＋ 產 ' + pp.prop + ' ＝ <b>' + pp.total + '</b> 元</div>';
       h += '</section>';
     });
     h += '</div>';

@@ -240,7 +240,7 @@
     } else {
       L.at1 = L.oh1 = L.mr = L.hospital = L.outpatient = L.er = L.premium = 0; L.oaa = false;
     }
-    var P = {};
+    var P = { enabled: prop.enabled !== false };
     // 產險 DM：「※針對未滿15足歲之被保險人，本保險契約無提供意外死亡之喪葬費用保險金。」兒童方案身故及失能為「-」
     P.death = child ? 0 : num(prop.deathWan) * 10000;
     P.hospital = num(prop.hospitalWan) * 10000;
@@ -248,6 +248,7 @@
     P.er = isSet(prop.erYuan) ? num(prop.erYuan) : P.hospital * PROP_RATIO.er;
     P.accidentMedical = num(prop.accidentMedicalWan) * 10000;
     P.premium = num(prop.premium);
+    if (!P.enabled) { P.death = P.hospital = P.outpatient = P.er = P.accidentMedical = P.premium = 0; }
     return {
       life: L, prop: P, child: child,
       lifePremiumMissing: L.enabled && !isSet(life.premium),
@@ -352,8 +353,28 @@
     return String(s === null || s === undefined ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function bracket(lifeOn, lifeTxt, propTxt) {
-    return '（' + (lifeOn ? '人壽 ' + lifeTxt + '＋產險 ' + propTxt : '產險 ' + propTxt) + '）';
+  /** 保額來源（只列有投保的一方）：（人壽 X＋產險 Y）／（人壽 X）／（產險 Y） */
+  function covSource(lifeOn, lifeTxt, propOn, propTxt) {
+    var parts = [];
+    if (lifeOn) parts.push('人壽 ' + lifeTxt);
+    if (propOn) parts.push('產險 ' + propTxt);
+    return parts.join('＋');
+  }
+  function bracket(lifeOn, lifeTxt, propTxt, propOn) {
+    var s = covSource(lifeOn, lifeTxt, propOn !== false, propTxt);
+    return s ? '（' + s + '）' : '';
+  }
+  /** 保費列文字（卡片／總表圖／編輯器共用）：不投保的一方寫「不投保」 */
+  function premiumParts(c) {
+    var lifeTxt = !c.life.enabled ? '不投保'
+      : (c.lifePremiumMissing ? (c.lifeOverCap ? 'AT1 超過年齡上限' : '需另行試算') : comma(c.life.premium));
+    var propTxt = c.prop.enabled ? comma(c.prop.premium) : '不投保';
+    return { life: lifeTxt, prop: propTxt, total: comma(c.premium), missing: !!c.lifePremiumMissing,
+      lifeNum: !c.life.enabled || c.lifePremiumMissing ? null : c.life.premium, propNum: c.prop.enabled ? c.prop.premium : null };
+  }
+  /** 方案一側都不投保 → 錯誤訊息（擋總表圖） */
+  function planNothingInsured(plan) {
+    return !(plan.life && plan.life.enabled) && plan.property && plan.property.enabled === false;
   }
   function row(label, total, br, sub) {
     return '<div class="cov-row"><div class="cov-label">' + esc(label) +
@@ -372,7 +393,7 @@
 
   function renderPlanCard(plan, quote, idx) {
     var c = computePlan(plan, quote);
-    var L = c.life, P = c.prop, on = L.enabled;
+    var L = c.life, P = c.prop, on = L.enabled, pOn = P.enabled;
     var h = '';
     h += '<article class="plan-card' + (plan.recommended ? ' is-reco' : '') + '" id="plan-' + (idx + 1) + '">';
     if (quote.sample) h += '<div class="card-sample">範例</div>';
@@ -390,26 +411,30 @@
     } else {
       h += '<section class="death-box"><div class="death-label">意外身故・失能 保額</div>' +
         '<div class="death-val">' + esc(fmtYuan(c.death)) + '</div>' +
-        '<div class="death-br">' + esc(on ? ('人壽 ' + fmtShort(L.at1) + '＋產險 ' + fmtShort(P.death)) : ('產險 ' + fmtShort(P.death))) + '</div></section>';
+        '<div class="death-br">' + esc(covSource(on, fmtShort(L.at1), pOn, fmtShort(P.death))) + '</div></section>';
     }
 
     h += '<section class="cov"><h3 class="sec-title">醫療保障</h3>';
-    h += row('海外突發疾病 住院', fmtYuan(c.hospital), bracket(on, fmtShort(L.hospital), fmtShort(P.hospital)),
+    // 合計為 0 的列（該項兩邊都沒有保障）不顯示
+    if (c.hospital) h += row('海外突發疾病 住院', fmtYuan(c.hospital), bracket(on, fmtShort(L.hospital), fmtShort(P.hospital), pOn),
       on ? (L.child ? '人壽突發疾病 OH1 ' + fmtShort(L.oh1) + '・保期內最高' : '人壽保期內最高') : '');
-    h += row('海外突發疾病 門診', fmtYuan(c.outpatient), bracket(on, '每日最高 ' + fmtShort(L.outpatient), fmtShort(P.outpatient)));
-    h += row('海外突發疾病 急診', fmtYuan(c.er), bracket(on, '每日最高 ' + fmtShort(L.er), fmtShort(P.er)));
-    h += row('意外醫療', fmtYuan(c.accidentMedical), bracket(on, L.child ? 'MRC ' + fmtShort(L.mrc) : fmtShort(L.mr), fmtShort(P.accidentMedical)),
+    if (c.outpatient) h += row('海外突發疾病 門診', fmtYuan(c.outpatient), bracket(on, '每日最高 ' + fmtShort(L.outpatient), fmtShort(P.outpatient), pOn));
+    if (c.er) h += row('海外突發疾病 急診', fmtYuan(c.er), bracket(on, '每日最高 ' + fmtShort(L.er), fmtShort(P.er), pOn));
+    if (c.accidentMedical) h += row('意外醫療', fmtYuan(c.accidentMedical), bracket(on, L.child ? 'MRC ' + fmtShort(L.mrc) : fmtShort(L.mr), fmtShort(P.accidentMedical), pOn),
       on ? (L.child ? '人壽兒童傷害醫療 MRC・每一事故最高' : '人壽每一事故最高') : '');
     if (on && L.oaa) h += '<div class="oaa-chip">✈ 人壽另含 OAA 海外醫療專機運送（實物給付）</div>';
     h += '</section>';
 
-    h += '<section class="inconv"><h3 class="sec-title">不便險（產險）</h3>' + itemList(plan.inconvenience) + '</section>';
-    h += '<section class="others"><h3 class="sec-title">其他產險保障</h3>' + itemList(plan.others) + '</section>';
+    if (pOn) {
+      h += '<section class="inconv"><h3 class="sec-title">不便險（產險）</h3>' + itemList(plan.inconvenience) + '</section>';
+      h += '<section class="others"><h3 class="sec-title">其他產險保障</h3>' + itemList(plan.others) + '</section>';
+    }
 
+    var pp = premiumParts(c);
     h += '<footer class="premium"><div class="prem-label">保費</div>' +
-      (c.lifePremiumMissing
-        ? '<div class="prem-formula">壽 <b>' + (c.lifeOverCap ? 'AT1 超過年齡上限' : '需另行試算') + '</b> ＋ 產 <b>' + comma(P.premium) + '</b>（人壽保費另計）</div></footer>'
-        : '<div class="prem-formula">壽 <b>' + comma(L.premium) + '</b> ＋ 產 <b>' + comma(P.premium) + '</b> ＝ <span class="prem-total">' + comma(c.premium) + '</span> 元</div></footer>');
+      (pp.missing
+        ? '<div class="prem-formula">壽 <b>' + pp.life + '</b> ＋ 產 <b>' + pp.prop + '</b>（人壽保費另計）</div></footer>'
+        : '<div class="prem-formula">壽 <b>' + pp.life + '</b> ＋ 產 <b>' + pp.prop + '</b> ＝ <span class="prem-total">' + pp.total + '</span> 元</div></footer>');
     h += '</article>';
     return h;
   }
@@ -417,15 +442,19 @@
   function renderNotes(quote) {
     var notes = [];
     var anyLife = (quote.plans || []).some(function (p) { return p.life && p.life.enabled; });
-    notes.push('人壽＝' + LIFE_PRODUCT + '；產險＝' + PROPERTY_PRODUCT +
-      (quote.schengen ? '【計畫二・醫療加值／申根適用，海外突發疾病住院 150萬】' : '【計畫一・國外旅遊適用】') + '。');
+    var anyProp = (quote.plans || []).some(function (p) { return !(p.property && p.property.enabled === false); });
+    var propNote = '產險＝' + PROPERTY_PRODUCT + (quote.schengen ? '【計畫二・醫療加值／申根適用，海外突發疾病住院 150萬】' : '【計畫一・國外旅遊適用】');
+    notes.push((anyLife ? '人壽＝' + LIFE_PRODUCT + (anyProp ? '；' : '') : '') + (anyProp ? propNote : '') + '。');
+    if (anyLife !== anyProp || (quote.plans || []).some(function (p) { return !(p.life && p.life.enabled) || (p.property && p.property.enabled === false); })) {
+      notes.push('保費列中「不投保」表示該方案未投保該險種（不含其保障與保費）。');
+    }
     if (quote.schengen) {
       notes.push('申根行程：產險已套用計畫二；請隨身攜帶申根地區醫療旅遊保險英文投保憑證。人壽為國外其他地區（OAA 不適用），保費請以 GPTA 試算為準。');
     }
     var childQ = isChildQuote(quote);
     if (childQ) {
       if (anyLife) notes.push('未滿15足歲：人壽主約為富邦人壽兒童傷害醫療旅行平安保險 MRC 60萬（傷害醫療每一事故最高），不提供 AT1 意外身故；另含海外突發疾病 OH1 及 OAA。');
-      notes.push('產險：未滿15足歲適用新快樂旅綜+ 兒童方案；依 DM「針對未滿15足歲之被保險人，本保險契約無提供意外死亡之喪葬費用保險金」。');
+      if (anyProp) notes.push('產險：未滿15足歲適用新快樂旅綜+ 兒童方案；依 DM「針對未滿15足歲之被保險人，本保險契約無提供意外死亡之喪葬費用保險金」。');
     }
     if (anyLife) {
       var pct = num(quote.lifeRegionPct || 100);
@@ -433,7 +462,7 @@
         (pct !== 100 ? '；人壽住院／門診／急診限額已含 ' + esc(quote.destination || '') + ' ' + pct + '% 地區調整' : '') +
         '；人壽門診、急診為每日最高。');
     }
-    notes.push('產險門診為住院額度 2%、急診為 5%（保期內最高）。');
+    if (anyProp) notes.push('產險門診為住院額度 2%、急診為 5%（保期內最高）。');
     (quote.extraNotes || []).forEach(function (n) { if (n) notes.push(n); });
     notes.push('本頁為保障內容與保費試算摘要，實際以保單條款、投保規定及核保結果為準。');
     return '<ul class="notes">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>';
@@ -737,6 +766,6 @@
     AGE_BANDS: AGE_BANDS, ageInfo: ageInfo, isChildQuote: isChildQuote, childOh1Wan: childOh1Wan,
     CHILD_MRC_WAN: CHILD_MRC_WAN, CHILD_OH1_OPTIONS: CHILD_OH1_OPTIONS, propertyAgeCheck: propertyAgeCheck,
     BRAND: BRAND, renderBrand: renderBrand, brandLogoReady: function () { return brandLogoReady; },
-    renderQuote: renderQuote, renderPlanCard: renderPlanCard, titleFor: titleFor, esc: esc
+    renderQuote: renderQuote, renderPlanCard: renderPlanCard, premiumParts: premiumParts, covSource: covSource, planNothingInsured: planNothingInsured, titleFor: titleFor, esc: esc
   };
 })(window);

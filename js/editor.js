@@ -262,7 +262,8 @@
         plans: (q.plans || []).map(function (p, i) {
           var c = TQ.computePlan(p, q);
           return { name: p.name || ('方案' + (i + 1)),
-            life: c.lifePremiumMissing ? '未填' : c.life.premium, prop: c.prop.premium,
+            life: !c.life.enabled ? '不投保' : (c.lifePremiumMissing ? '未填' : c.life.premium),
+            prop: c.prop.enabled ? c.prop.premium : '不投保',
             total: c.lifePremiumMissing ? '未完成' : c.premium };
         })
       });
@@ -284,6 +285,8 @@
       if (p.life && p.life.enabled && !ai.child && TQ.num(p.life.at1Wan) > ai.at1Max) {
         out.push('⚠ ' + n + '：人壽 AT1 ' + p.life.at1Wan + ' 萬超過「' + ai.label + '」上限 ' + ai.at1Max + ' 萬，請調降');
       }
+      if (TQ.planNothingInsured(p)) { out.push('⚠ ' + n + '：人壽與產險都選「0（不投保）」，至少要投保一項'); return; }
+      if (p.property.enabled === false) return;
       var pre = TQ.resolvePropertyPreset(p.property, Q);
       var ac = TQ.propertyAgeCheck(pre, Q);
       if (!ac.ok) out.push('⚠ ' + n + '：產險' + ac.tip);
@@ -440,10 +443,13 @@
     var bannerBits = [];
     var needRebuild = false;
     Q.plans.forEach(function (p, i) {
+      var propOff = p.property.enabled === false;
       // 產險：先依保額套保障項目
-      if (applyPropertyCoverage(p)) needRebuild = true;
+      if (!propOff && applyPropertyCoverage(p)) needRebuild = true;
 
-      if (!skipAutoOnce.prop[i]) {
+      if (propOff) {
+        p.property.premium = 0; p.property._premAuto = true; p.property._premTip = '產險不投保';
+      } else if (!skipAutoOnce.prop[i]) {
         var pr = TQ.lookupPropertyPremium(p.property, Q.days, Q);
         if (pr.preset) {
           p.property.planCode = pr.preset.code;
@@ -472,7 +478,7 @@
 
       // 人壽
       if (!p.life.enabled) {
-        if (!skipAutoOnce.life[i]) { p.life.premium = 0; p.life._premAuto = true; p.life._premTip = '未含人壽'; }
+        if (!skipAutoOnce.life[i]) { p.life.premium = 0; p.life._premAuto = true; p.life._premTip = '人壽不投保'; }
       } else if (!skipAutoOnce.life[i] && window.LIFE_RATES) {
         var lr = LIFE_RATES.lookupLifePremium(Q, p);
         if (lr.found) {
@@ -495,8 +501,8 @@
       }
 
       bannerBits.push(
-        (p.name || ('方案' + (i + 1))) + '：壽' + (p.life._premAuto ? '自動' : '手填／缺表') +
-        '／產' + (p.property._premAuto ? '自動' : (p.property._premTip && p.property._premTip.indexOf('僅列') >= 0 ? '超出DM' : '手填／未對應'))
+        (p.name || ('方案' + (i + 1))) + '：壽' + (!p.life.enabled ? '不投保' : (p.life._premAuto ? '自動' : '手填／缺表')) +
+        '／產' + (propOff ? '不投保' : p.property._premAuto ? '自動' : (p.property._premTip && p.property._premTip.indexOf('僅列') >= 0 ? '超出DM' : '手填／未對應'))
       );
     });
     var el = document.getElementById('autoPremiumBanner');
@@ -605,30 +611,33 @@
     var h = '<section class="ed-card plan-form" data-plan="' + i + '"' + (i === activePlan ? '' : ' hidden') + '>';
     h += '<h2>' + esc(plan.name || ('方案' + (i + 1))) +
       (plan.recommended ? ' <span class="reco-badge" style="font-size:13px">推薦</span>' : '') + '</h2>';
-    h += '<p class="plan-simple-hint">' + (hasLife
-      ? '此方案只需填：人壽保額、產險保額（其餘自動）'
-      : '此方案只需填：產險保額（純產險，無人壽）') +
+    var hasProp = plan.property.enabled !== false;
+    h += '<p class="plan-simple-hint">' + (hasLife && hasProp
+      ? '此方案只需選：人壽保額、產險保額（其餘自動）；選「0（不投保）」＝該險種不投保'
+      : (hasLife ? '此方案：只投保人壽（產險不投保）' : (hasProp ? '此方案：只投保產險（人壽不投保）' : '⚠ 人壽與產險都不投保：至少要投保一項'))) +
       (Q.schengen ? '　｜已勾選申根→產險用計畫二（突發疾病 150萬）' : '') + '</p>';
 
     h += '<div class="grid g2">';
-    if (hasLife && child) {
-      h += selectField('人壽 OH1 海外突發疾病（萬）', b + 'life.childOh1Wan',
-        TQ.CHILD_OH1_OPTIONS.map(function (v) { return { value: v, label: v + ' 萬' + (v === 60 ? '（預設）' : '（醫療加值）') }; }), {
-        hint: '未滿15歲人壽主約為兒童傷害醫療旅平險 MRC 60萬，不提供AT1；無 MR；OAA 同成人', auto: true
+    var ZERO = [{ value: 0, label: '0（不投保）' }];
+    if (child) {
+      h += selectField('人壽（兒童傷害醫療 MRC 60萬＋OH1）', b + '_lifeSel',
+        ZERO.concat(TQ.CHILD_OH1_OPTIONS.map(function (v) { return { value: v, label: 'MRC 60萬＋OH1 ' + v + ' 萬' + (v === 60 ? '（預設）' : '（醫療加值）') }; })), {
+        hint: hasLife ? '未滿15歲人壽主約為兒童傷害醫療旅平險 MRC 60萬，不提供AT1；無 MR；OAA 同成人' : '人壽不投保（保費 0，卡片不列人壽保障）', auto: true
       });
-    } else if (hasLife) {
+    } else {
       var cap = ai.valid ? ai.at1Max : 2000;
-      h += selectField('人壽保額 AT1（萬）', b + 'life.at1Wan', withCurrent(at1Options(cap), plan.life.at1Wan, '超過年齡上限 ' + cap + ' 萬'), {
-        hint: (ai.valid ? ai.label + '：AT1 100～' + cap + ' 萬' : '以 100 萬為單位（100～2000）') + '；OH1／MR＝AT1×10%' +
-          '，保費自動查表', auto: true
+      h += selectField('人壽保額 AT1（萬）', b + '_lifeSel', ZERO.concat(withCurrent(at1Options(cap), hasLife ? plan.life.at1Wan : null, '超過年齡上限 ' + cap + ' 萬')), {
+        hint: hasLife ? (ai.valid ? ai.label + '：AT1 100～' + cap + ' 萬' : '以 100 萬為單位（100～2000）') + '；OH1／MR＝AT1×10%，保費自動查表'
+          : '人壽不投保（保費 0，卡片不列人壽保障）', auto: true
       });
     }
     if (child) {
-      h += '<label>產險方案<input type="text" readonly value="' + esc(Q.schengen || plan.property.planCode === 'P2-CHILD' ? '計畫二 兒童醫療加值（P2-CHILD）' : '計畫一 兒童國外（P1-CHILD）') + '">' +
-        '<span class="hint auto">未滿15足歲只能投保兒童方案；DM：無意外死亡之喪葬費用保險金（身故及失能「-」）</span></label>';
+      h += selectField('產險方案', b + '_propSel', ZERO.concat([{ value: 1, label: Q.schengen || plan.property.planCode === 'P2-CHILD' ? '計畫二 兒童醫療加值（P2-CHILD）' : '計畫一 兒童國外（P1-CHILD）' }]), {
+        hint: hasProp ? '未滿15足歲只能投保兒童方案；DM：無意外死亡之喪葬費用保險金（身故及失能「-」）' : '產險不投保（保費 0，不列不便險／產險保障）', auto: true
+      });
     } else {
-      h += selectField('產險保額（萬）', b + 'property.deathWan', withCurrent(propertyDeathOptionsFor(ai), plan.property.deathWan, '不符 DM 投保年齡'), {
-        hint: Q.schengen ? '計畫二 P2-G*（突發疾病住院 150萬）' : '計畫一 P1-G*',
+      h += selectField('產險保額（萬）', b + '_propSel', ZERO.concat(withCurrent(propertyDeathOptionsFor(ai), hasProp ? plan.property.deathWan : null, '不符 DM 投保年齡')), {
+        hint: hasProp ? (Q.schengen ? '計畫二 P2-G*（突發疾病住院 150萬）' : '計畫一 P1-G*') : '產險不投保（保費 0，不列不便險／產險保障）',
         auto: true
       });
     }
@@ -690,14 +699,45 @@
   function fillInputs(scope) {
     Array.prototype.forEach.call(scope.querySelectorAll('[data-k]'), function (el) {
       var k = el.getAttribute('data-k'), v;
+      var mSelF = /^plans\.(\d+)\._(life|prop)Sel$/.exec(k);
       if (k === 'extraNotesText') v = (Q.extraNotes || []).join('\n');
+      else if (mSelF) v = selValue(Q.plans[Number(mSelF[1])], mSelF[2]);
       else v = getPath(Q, k);
       if (el.type === 'checkbox') el.checked = !!v;
       else el.value = (v === null || v === undefined) ? '' : v;
     });
   }
+  /** 人壽／產險選單目前值：0＝不投保 */
+  function selValue(plan, side) {
+    var child = TQ.isChildQuote(Q);
+    if (side === 'life') return plan.life && plan.life.enabled ? (child ? TQ.childOh1Wan(plan.life) : plan.life.at1Wan) : 0;
+    return plan.property.enabled === false ? 0 : (child ? 1 : plan.property.deathWan);
+  }
+  /** 選單改值：0＝不投保；其他＝投保並設定保額 */
+  function applySel(i, side, v) {
+    var p = Q.plans[i], child = TQ.isChildQuote(Q);
+    v = Number(v) || 0;
+    if (side === 'life') {
+      var was = !!p.life.enabled;
+      p.life.enabled = v > 0;
+      if (v > 0) {
+        if (child) p.life.childOh1Wan = v; else p.life.at1Wan = v;
+        if (!was) p.life.oaa = !Q.schengen && Q.lifeRegion === 'asia14';
+      }
+      p.life.premium = v > 0 ? null : 0;
+      delete skipAutoOnce.life[i];
+    } else {
+      p.property.enabled = v > 0;
+      if (v > 0 && !child) { p.property.deathWan = v; p.property.planCode = ''; }
+      p.property._appliedCode = null;
+      if (!(v > 0)) p.property.premium = 0;
+      delete skipAutoOnce.prop[i];
+    }
+  }
   function readInput(el) {
     var k = el.getAttribute('data-k');
+    var mSel = /^plans\.(\d+)\._(life|prop)Sel$/.exec(k);
+    if (mSel) { applySel(Number(mSel[1]), mSel[2], el.value); return; }
     if (k === 'extraNotesText') { Q.extraNotes = el.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); return; }
     var v;
     if (el.type === 'checkbox') v = el.checked;
@@ -739,6 +779,11 @@
     }
     var mAt = /^plans\.(\d+)\.life\.(at1Wan|childOh1Wan|oh1Wan|mrWan|oaa|enabled)$/.exec(k);
     if (mAt) delete skipAutoOnce.life[Number(mAt[1])];
+    if (mAt && mAt[2] === 'enabled' && v) {
+      var lp0 = Q.plans[Number(mAt[1])].life, ai0 = TQ.ageInfo(Q.age);
+      if (!TQ.num(lp0.at1Wan)) lp0.at1Wan = Math.min(300, ai0.valid && ai0.at1Max ? ai0.at1Max : 300);
+      lp0.premium = null;
+    }
     var mPc = /^plans\.(\d+)\.property\.(planCode|deathWan|hospitalWan)$/.exec(k);
     if (mPc) {
       var pi = Number(mPc[1]);
@@ -815,6 +860,11 @@
       });
       var sel = sec.querySelector('[data-preset="' + i + '"]');
       if (sel && p.property.planCode) sel.value = p.property.planCode;
+      ['life', 'prop'].forEach(function (side) {
+        var ss = sec.querySelector('[data-k="plans.' + i + '._' + side + 'Sel"]');
+        var sv = String(selValue(p, side));
+        if (ss && ss.value !== sv && ss.querySelector('option[value="' + sv + '"]')) ss.value = sv;
+      });
       var lt = sec.querySelector('[data-life-prem-tip="' + i + '"]');
       var pt = sec.querySelector('[data-prop-prem-tip="' + i + '"]');
       if (lt) { lt.textContent = p.life._premTip || ''; lt.className = 'hint' + (p.life._premAuto ? ' auto' : ''); }
@@ -839,7 +889,8 @@
         '<span>門診 <b>' + TQ.fmtYuan(c.outpatient) + '</b></span>' +
         '<span>急診 <b>' + TQ.fmtYuan(c.er) + '</b></span>' +
         '<span>意外醫療 <b>' + TQ.fmtYuan(c.accidentMedical) + '</b></span>' +
-        '<span>保費 ' + lifeBadge + '壽<b>' + TQ.comma(c.life.premium) + '</b>＋' + propBadge + '產<b>' + TQ.comma(c.prop.premium) + '</b>＝<b>' + TQ.comma(c.premium) + '</b>元</span>';
+        (function () { var pp = TQ.premiumParts(c);
+          return '<span>保費 ' + (c.life.enabled ? lifeBadge : '') + '壽<b>' + pp.life + '</b>＋' + (c.prop.enabled ? propBadge : '') + '產<b>' + pp.prop + '</b>＝<b>' + pp.total + '</b>元</span>'; })();
     });
     document.getElementById('regionHint').textContent = isDomesticDest()
       ? '目的地為台灣國內地點，暫不自動判斷地區；請改填出國目的地'
@@ -864,6 +915,12 @@
         else if (!p.life._premAuto) add('warn', n + '：人壽保費為手填／缺表。');
         else add('ok', n + '：人壽保費已自動帶入。');
       }
+      if (!(p.life && p.life.enabled)) add('ok', n + '：人壽不投保。');
+      var tg = p.tagline || '';
+      if ((p.property.enabled === false && /不便險/.test(tg)) || ((p.property.enabled === false || !(p.life && p.life.enabled)) && /雙實支/.test(tg))) {
+        add('warn', n + '：副標「' + tg + '」與不投保的險種不符，請到「進階」修改副標。');
+      }
+      if (p.property.enabled === false) { add('ok', n + '：產險不投保（不列不便險／產險保障）。'); return; }
       if (!TQ.isSet(p.property.premium)) add('err', n + '：產險保費未填（' + (p.property._premTip || '') + '）。');
       else if (!p.property._premAuto) add('warn', n + '：產險保費非 DM 自動（' + (p.property._premTip || '手填') + '）。');
       else add('ok', n + '：產險保費已自動帶入（DM）。');
@@ -967,7 +1024,9 @@
     }
     if (t.hasAttribute('data-k') && (t.type === 'checkbox' || t.tagName === 'SELECT')) {
       readInput(t);
-      if (t.getAttribute('data-k') === 'schengen') { buildPlanUI(); return; }
+      var kc = t.getAttribute('data-k');
+      if (kc === 'schengen') { buildPlanUI(); return; }
+      if (/^plans\.\d+\.(_lifeSel|_propSel|life\.enabled)$/.test(kc)) { buildPlanUI(); update(); return; }
       update();
     }
   });
