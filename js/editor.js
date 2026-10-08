@@ -1,5 +1,5 @@
 /* 報價編輯器：填寫 → 即時預覽 → 下載三方案總表圖（草稿自動存在瀏覽器）
- * 產險保費：新快樂旅綜+ DM（天數 2～10）自動帶入；人壽保費：life-rates.js 精確相符才自動帶入。
+ * 產險保費：新快樂旅綜+ 自動帶入（一般／租車 2～30 天：2～10 天 DM、11～30 天展業平台試算 2026-10-08；兒童方案僅 2～10 天）；人壽保費：life-rates.js 精確相符才自動帶入。
  */
 (function () {
   'use strict';
@@ -197,7 +197,7 @@
     if (st.error) warn = st.error;
     else if (st.days) {
       txt = '共 ' + st.days + ' 天' + (st.kept ? '（沿用原報價天數；請補填出發／回程日）' : '（算頭算尾）');
-      if (st.days > 30) { soft = true; warn = '⚠ 自動費率僅涵蓋 1～30 天，目前 ' + st.days + ' 天：超出範圍的保費請以 GPTA／產險試算後手填'; }
+      if (st.days > 30) { soft = true; warn = '⚠ 自動費率僅涵蓋人壽 1～30 天、產險 2～30 天（兒童方案 2～10 天），目前 ' + st.days + ' 天：超出範圍的保費請以 GPTA／產險試算後手填'; }
     }
     if (v) v.textContent = txt;
     if (w) { w.hidden = !warn; w.textContent = warn; w.classList.toggle('soft', soft); }
@@ -447,6 +447,7 @@
       // 產險：先依保額套保障項目
       if (!propOff && applyPropertyCoverage(p)) needRebuild = true;
 
+      if (propOff || skipAutoOnce.prop[i]) { p.property._premOut = false; p.property._premSrc = ''; }
       if (propOff) {
         p.property.premium = 0; p.property._premAuto = true; p.property._premTip = '產險不投保';
       } else if (!skipAutoOnce.prop[i]) {
@@ -455,6 +456,8 @@
           p.property.planCode = pr.preset.code;
           if (!p.property._appliedCode) p.property._appliedCode = pr.preset.code;
         }
+        p.property._premOut = !!pr.outOfRange;
+        p.property._premSrc = pr.found ? pr.source : '';
         if (pr.found) {
           p.property.premium = pr.premium;
           p.property._premTip = pr.tip + (p.property._covAuto ? '；不便險／其他保障已自動帶入' : '');
@@ -502,7 +505,7 @@
 
       bannerBits.push(
         (p.name || ('方案' + (i + 1))) + '：壽' + (!p.life.enabled ? '不投保' : (p.life._premAuto ? '自動' : '手填／缺表')) +
-        '／產' + (propOff ? '不投保' : p.property._premAuto ? '自動' : (p.property._premTip && p.property._premTip.indexOf('僅列') >= 0 ? '超出DM' : '手填／未對應'))
+        '／產' + (propOff ? '不投保' : p.property._premAuto ? '自動' : (p.property._premOut ? '天數無資料' : '手填／未對應'))
       );
     });
     var el = document.getElementById('autoPremiumBanner');
@@ -906,7 +909,7 @@
     var aiC = TQ.ageInfo(Q.age);
     if (aiC.valid && aiC.child) add('ok', '未滿15足歲：人壽為兒童傷害醫療旅平險 MRC 60萬＋OH1＋OAA（無 AT1／MR）；產險為兒童方案。');
     var dsC = dateState();
-    if (dsC.days > 30) add('warn', '共 ' + dsC.days + ' 天：自動費率僅涵蓋 1～30 天，超出範圍的保費請以 GPTA／產險試算後手填。');
+    if (dsC.days > 30) add('warn', '共 ' + dsC.days + ' 天：自動費率僅涵蓋人壽 1～30 天、產險 2～30 天（兒童方案 2～10 天），超出範圍的保費請以 GPTA／產險試算後手填。');
     Q.plans.forEach(function (p) {
       var n = p.name || '';
       if (p.life && p.life.enabled) {
@@ -922,8 +925,8 @@
       }
       if (p.property.enabled === false) { add('ok', n + '：產險不投保（不列不便險／產險保障）。'); return; }
       if (!TQ.isSet(p.property.premium)) add('err', n + '：產險保費未填（' + (p.property._premTip || '') + '）。');
-      else if (!p.property._premAuto) add('warn', n + '：產險保費非 DM 自動（' + (p.property._premTip || '手填') + '）。');
-      else add('ok', n + '：產險保費已自動帶入（DM）。');
+      else if (!p.property._premAuto) add('warn', n + '：產險保費非自動帶入（' + (p.property._premTip || '手填') + '）。');
+      else add('ok', n + '：產險保費已自動帶入（' + (p.property._premSrc || 'DM') + '）。');
       if (!TQ.num(p.property.deathWan)) add('warn', n + '：產險意外身故失能未填。');
       if (!p.inconvenience.length) add('warn', n + '：沒有任何不便險項目。');
       p.inconvenience.concat(p.others).forEach(function (it) {
@@ -942,7 +945,7 @@
     (c.plans || []).forEach(function (p) {
       if (p.life) { delete p.life._premTip; delete p.life._premAuto; }
       if (p.property) {
-        delete p.property._premTip; delete p.property._premAuto;
+        delete p.property._premTip; delete p.property._premAuto; delete p.property._premOut; delete p.property._premSrc;
         delete p.property._covAuto; delete p.property._appliedCode;
       }
     });

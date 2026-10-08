@@ -571,7 +571,20 @@
     if (a.age >= min && a.age <= max) return { ok: true };
     return { ok: false, tip: preset.label + ' 投保年齡為「' + preset.ageLabel + '」（DM），' + a.age + ' 歲不可投保' };
   }
-  /** 產險保費查表：僅 DM 有列的天數（通常 2～10），绝不內插；保額／方案變更時一併帶保障項目 */
+  /** 產險保費來源（依天數）：2～10 天 DM 費率表；11～30 天展業平台試算（見 presets.js meta.premiumSources） */
+  function propertyPremiumSource(days) {
+    var meta = (global.PROPERTY_PRESETS && global.PROPERTY_PRESETS.meta) || {};
+    var list = meta.premiumSources || [];
+    var d = num(days);
+    for (var i = 0; i < list.length; i++) {
+      if (d >= list[i].from && d <= list[i].to) return list[i].label;
+    }
+    return 'DM';
+  }
+  /**
+   * 產險保費查表：僅 presets.js 有列的天數，絕不內插；保額／方案變更時一併帶保障項目。
+   * 一般／租車 2～30 天（2～10 天 DM、11～30 天展業平台試算 2026-10-08）；兒童方案僅 2～10 天。
+   */
   function lookupPropertyPremium(prop, days, quote) {
     var d = num(days);
     var preset = resolvePropertyPreset(prop, quote);
@@ -593,17 +606,21 @@
       return {
         found: false,
         outOfRange: true,
-        tip: '新快樂旅綜+ DM 費率表僅列 ' + minD + '～' + maxD + ' 天，目前 ' + d + ' 天無表列保費，請向產險試算後手填（禁止推估）',
+        tip: preset.child
+          ? '兒童方案（未滿15足歲）保費僅有 ' + minD + '～' + maxD + ' 天，目前 ' + d + ' 天無資料（展業平台試算未含兒童方案 11～30 天），請向產險試算後手填（禁止推估）'
+          : '新快樂旅綜+ 自動保費僅有 ' + minD + '～' + maxD + ' 天（2～10 天 DM、11～30 天展業平台試算），目前 ' + d + ' 天無資料，請向產險試算後手填（禁止推估）',
         preset: preset,
         dayMin: minD,
         dayMax: maxD
       };
     }
     var prem = table[String(d)];
+    var srcLabel = propertyPremiumSource(d);
     return {
       found: true,
       premium: prem,
-      tip: '自動：' + comma(prem) + ' 元（' + preset.label + '／' + d + '天／DM）',
+      source: srcLabel,
+      tip: '自動：' + comma(prem) + ' 元（' + preset.label + '／' + d + '天／' + srcLabel + '）',
       preset: preset,
       dayMin: minD,
       dayMax: maxD
@@ -760,7 +777,7 @@
     guessRegionPct: guessRegionPct, computePlan: computePlan,
     fmtDate: fmtDate, daysInclusive: daysInclusive, parseDateParts: parseDateParts,
     encodeQuote: encodeQuote, decodeHash: decodeHash, shareUrl: shareUrl,
-    findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium,
+    findPropertyPreset: findPropertyPreset, resolvePropertyPreset: resolvePropertyPreset, lookupPropertyPremium: lookupPropertyPremium, propertyPremiumSource: propertyPremiumSource,
     detectSchengen: detectSchengen,
     detectDomestic: detectDomestic, DOMESTIC_WARNING: DOMESTIC_WARNING,
     AGE_BANDS: AGE_BANDS, ageInfo: ageInfo, isChildQuote: isChildQuote, childOh1Wan: childOh1Wan,
